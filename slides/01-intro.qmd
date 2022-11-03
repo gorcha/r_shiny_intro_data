@@ -1,0 +1,1362 @@
+---
+title: "Introduction to Shiny"
+subtitle: "Session 1: *Introduction to Shiny*"
+author: "Danny Smith"
+format:
+  revealjs:
+    theme: dark
+    width: 1280
+    height: 720
+    auto-animate: true
+    slide-number: true
+    chalkboard: false
+    preview-links: auto
+    footer: "**Introduction to Shiny** Session 1: *Introduction to Shiny*"
+    self-contained: true
+    reference-location: document
+---
+
+# Housekeeping
+
+## Course outline
+
+::: {.incremental}
+1. *Introduction to Shiny*
+2. Shiny UI - layout, styling and theming
+3. Shiny UI - dynamic UI and extensions
+4. Reactivity and advanced server usage
+5. Application structure and workflow
+6. Data ingress and egress
+:::
+
+## What will we learn?
+
+A high level overview of Shiny, dipping into detail for key topics
+
+::: {.fragment}
+Concepts
+: What is Shiny and how do the key components work?
+:::
+
+::: {.fragment}
+Extending
+: How do you customise and extend Shiny?
+:::
+
+::: {.fragment}
+Resources
+: How do you learn more as your needs change?
+:::
+
+::: {.fragment}
+In practice
+: Workflow, best practices and some non-Shiny bits
+:::
+
+## Requirements
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### Knowledge
+* Comfortable working knowledge of R
+* Familiarity with RStudio
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### Tools
+
+* R
+* RStudio
+* Shiny!
+  ```r
+  install.packages("shiny")
+  ```
+:::
+::::
+
+:::::
+
+## Resources
+
+::: {.notes}
+Switch to RStudio and create a project from the Session materials repository
+:::
+
+::: {.fragment}
+#### Session materials
+
+<!-- TODO data repo URL -->
+[GitHub repo](https://github.com/gorcha/r_shiny_intro_data)
+
+``` {.bash code-line-numbers=false}
+git clone https://github.com/gorcha/r_shiny_intro_data.git
+```
+:::
+
+&nbsp;
+
+::: {.fragment}
+#### Online resources
+
+[Mastering Shiny](https://mastering-shiny.org)
+
+[Shiny Learning Resources](https://shiny.rstudio.com/tutorial/)
+
+[RStudio Shiny documentation](https://shiny.rstudio.com/articles)
+:::
+
+## This session
+
+::: {.incremental}
+* Introduction to Shiny
+* Creating an application
+* Basic application structure
+* Intro to UI code
+* Intro to Server code
+* Reactivity
+:::
+
+# Introduction to Shiny
+
+## What is Shiny?
+
+[Shiny](https://shiny.rstudio.com) is an R package allowing users to easily create interactive data driven web applications using only R code.
+
+::: {.fragment}
+* Incredibly fast to develop simple apps
+* Only R knowledge required, but a bit of web programming helps
+* Initial release in 2012
+:::
+
+::: {.fragment}
+[Shiny Gallery](https://shiny.rstudio.com/gallery/)
+:::
+
+## What is a Shiny application?
+
+::: {.fragment}
+A web application defined in R code, accessible in the browser. 
+:::
+
+::: {.fragment}
+&nbsp;
+
+UI - the frontend interface 
+: How the app *looks*. This defines what the user will see in their browser.
+
+&nbsp;
+
+Server - backend application logic 
+: How the app *behaves*. This defines the interaction of UI elements (how user inputs are used, how output data is produced) and other application behaviour.
+:::
+
+## How does an application run?
+
+The `shiny::runApp()` function
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Runs a web server
+* Waits for user connections/requests
+  ```
+  Listening on http://127.0.0.1:3771
+  ```  
+* Communicates with user sessions to allow user interaction
+:::
+::::
+
+:::: {.column width="50%"}
+``` {.r code-line-numbers=false}
+runApp(
+  appDir = getwd(),
+  port = getOption("shiny.port"),
+  launch.browser = getOption("shiny.launch.browser", interactive()),
+  host = getOption("shiny.host", "127.0.0.1"),
+  workerId = "",
+  quiet = FALSE,
+  display.mode = c("auto", "normal", "showcase"),
+  test.mode = getOption("shiny.testmode", FALSE)
+)
+```
+::::
+
+:::::
+
+# Creating an application
+
+## Creating an application: Shiny {auto-animate=true}
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+
+::::
+
+:::: {.column width="60%"}
+```{.r data-id="code" code-line-numbers="1"}
+library(shiny)
+```
+::::
+
+:::::
+
+## Creating an application: UI {auto-animate=true}
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+**UI**: how the app *looks*
+
+::: {.incremental}
+* Layout and components
+* Functions output HTML to be rendered in the browser
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r data-id="code" code-line-numbers="3-6"}
+library(shiny)
+
+ui <- fluidPage(
+  selectInput("dataset", label = "Dataset", choices = ls("package:datasets")),
+  tableOutput("table")
+)
+```
+
+::: {.fragment}
+&nbsp;
+
+```{r}
+#| output: false
+library(shiny)
+```
+
+```{r}
+#| echo: true
+#| code-line-numbers: false
+print(tableOutput("table"))
+```
+:::
+::::
+
+:::::
+
+## Creating an application: Server {auto-animate=true}
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+**UI**: how the app *looks*
+
+**Server**: how the app *behaves*
+
+::: {.incremental}
+* Process `input`s
+* Update `output`s
+* Manipulate the user `session`
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r data-id="code" code-line-numbers="8-13"}
+library(shiny)
+
+ui <- fluidPage(
+  selectInput("dataset", label = "Dataset", choices = ls("package:datasets")),
+  tableOutput("table")
+)
+
+server <- function(input, output, session) {
+  output$table <- renderTable({
+    dataset <- get(input$dataset, "package:datasets")
+    dataset
+  })
+}
+```
+::::
+
+:::::
+
+## Creating an application: App object {auto-animate=true}
+
+::: {.notes}
+Run `session_01/create_an_app.R` app in RStudio:
+* GUI - from the file
+* `shiny::runApp("session_01/create_an_app.R")`
+:::
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+**UI**: how the app *looks*
+
+**Server**: how the app *behaves*
+
+**App object**: how to *run* the app
+
+::: {.incremental}
+* Combine the server and UI into a `shinyApp()` object
+* Run this application with `runApp()`
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r data-id="code" code-line-numbers="15-16"}
+library(shiny)
+
+ui <- fluidPage(
+  selectInput("dataset", label = "Dataset", choices = ls("package:datasets")),
+  tableOutput("table")
+)
+
+server <- function(input, output, session) {
+  output$table <- renderTable({
+    dataset <- get(input$dataset, "package:datasets")
+    dataset
+  })
+}
+
+app <- shinyApp(ui, server)
+runApp(app)
+```
+::::
+
+:::::
+
+::: aside
+📝 session_01/create_an_app.R
+:::
+
+# Basic application structure
+
+## app.R
+
+::: {.notes}
+Run `session_01/structure_single_file` app in RStudio:
+* GUI - from the file
+* `shiny::runApp("session_01/structure_single_file")`
+:::
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* UI and server code in a single file
+* Last expression in the file must return a `shinyApp()` object
+* Good for small applications
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+```{.default code-line-numbers=false}
+shinyapp
+└── app.R
+```
+```{.r code-line-numbers=false}
+shiny::runApp("shinyapp/app.R")
+shiny::runApp("shinyapp")
+```
+&nbsp;
+```{.r filename="app.R"}
+library(shiny)
+
+ui <- fluidPage(
+  textOutput("hello")
+)
+
+server <- function(input, output, session) {
+  output$hello <- renderText("Hello, world!")
+}
+
+shinyApp(ui, server)
+```
+:::
+::::
+:::::
+
+::: aside
+📁 session_01/structure_single_file
+:::
+
+## ui.R & server.R
+
+::: {.notes}
+Run `session_01/structure_multi_file` app in RStudio:
+* GUI - from the files
+* `shiny::runApp("session_01/structure_multi_file")`
+:::
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Separate UI and server
+* Last expression in each file must be a ui object/server function
+* Good for code management in larger applications
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+```{.default code-line-numbers=false}
+shinyapp
+├── server.R
+└── ui.R
+```
+```{.r code-line-numbers=false}
+shiny::runApp("shinyapp")
+```
+&nbsp;
+```{.r filename="ui.R"}
+ui <- fluidPage(
+  textOutput("hello")
+)
+```
+```{.r filename="server.R"}
+library(shiny)
+
+server <- function(input, output, session) {
+  output$hello <- renderText("Hello, world!")
+}
+```
+:::
+::::
+
+:::::
+
+::: aside
+📁 session_01/structure_multi_file
+:::
+
+## Additional files
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### global.R
+
+* Run before server.R and ui.R
+* Loaded into the global environment
+
+```{.default code-line-numbers=false}
+shinyapp
+├── global.R
+├── server.R
+└── ui.R
+```
+```{.r code-line-numbers=false}
+shiny::runApp("shinyapp")
+```
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### R sub-directory
+
+* Files in the R directory are `source()`d in alphabetical order
+
+```{.default code-line-numbers=false}
+shinyapp
+├── R
+│   ├── data_load.R
+│   └── utils.R
+├── global.R
+├── server.R
+└── ui.R
+```
+```{.r code-line-numbers=false}
+shiny::runApp("shinyapp")
+```
+:::
+::::
+
+:::::
+
+&nbsp;
+
+::: {.fragment}
+Discussed in more detail in session 5!
+:::
+
+# Intro to UI code
+
+&nbsp;
+
+::: aside
+📁 session_01/intro_app
+:::
+
+## Layout
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.fragment}
+* Functions defining placement and styling of elements in the UI
+* Containers that apply styling and positioning
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|1-5,13-15,18-20"}
+ui <- fluidPage(
+  titlePanel("Miles Per Gallon"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        "variable",
+        "Variable:", 
+        c("Cylinders" = "cyl", "Transmission" = "am", "Gears" = "gear")
+      ),
+      p("Simple text with a ", a("hyperlink", href = "#")),
+      checkboxInput("outliers", "Show outliers", TRUE)
+    ),
+    
+    mainPanel(
+      h3(textOutput("caption")),
+      plotOutput("mpg_plot")
+    )
+  )
+)
+```
+::::
+
+:::::
+
+## Inputs
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.fragment}
+* Interactive elements accepting user input
+* Value accessible in server function
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|6-10,12"}
+ui <- fluidPage(
+  titlePanel("Miles Per Gallon"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        "variable",
+        "Variable:", 
+        c("Cylinders" = "cyl", "Transmission" = "am", "Gears" = "gear")
+      ),
+      p("Simple text with a ", a("hyperlink", href = "#")),
+      checkboxInput("outliers", "Show outliers", TRUE)
+    ),
+    
+    mainPanel(
+      h3(textOutput("caption")),
+      plotOutput("mpg_plot")
+    )
+  )
+)
+```
+::::
+
+:::::
+
+## Input functions
+
+::: {.notes}
+https://mastering-shiny.org/basic-ui.html#inputs
+:::
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+Most input functions share a common structure:
+
+::: {.fragment}
+* `inputId` - the unique ID used to refer to this element
+* `label` - a human readable label
+* `value` - the default value
+* Unique parameters for the control
+:::
+::::
+
+:::: {.column width="60%"}
+
+::: {.fragment}
+```{.r code-line-numbers=false}
+checkboxInput(
+  inputId,
+  label,
+  value = FALSE,
+  width = NULL
+)
+```
+:::
+
+&nbsp;
+
+::: {.fragment}
+```{.r code-line-numbers=false}
+selectInput(
+  inputId,
+  label,
+  choices,
+  selected = NULL,
+  multiple = FALSE,
+  selectize = TRUE,
+  width = NULL,
+  size = NULL
+)
+```
+:::
+::::
+
+:::::
+
+## Outputs
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.fragment}
+* Elements with dynamic content
+* Content assigned in server function
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|16-17"}
+ui <- fluidPage(
+  titlePanel("Miles Per Gallon"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        "variable",
+        "Variable:", 
+        c("Cylinders" = "cyl", "Transmission" = "am", "Gears" = "gear")
+      ),
+      p("Simple text with a ", a("hyperlink", href = "#")),
+      checkboxInput("outliers", "Show outliers", TRUE)
+    ),
+    
+    mainPanel(
+      h3(textOutput("caption")),
+      plotOutput("mpg_plot")
+    )
+  )
+)
+```
+::::
+
+:::::
+
+## Output functions
+
+::: {.notes}
+https://mastering-shiny.org/basic-ui.html#outputs
+:::
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+Like inputs, most output functions take the unique ID in the first argument:
+
+::: {.fragment}
+* `outputId` - the unique ID used to refer to this element
+* Unique parameters for the control
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.fragment}
+```{.r code-line-numbers=false}
+textOutput(
+  outputId,
+  container = if (inline) span else div,
+  inline = FALSE
+)
+```
+:::
+
+&nbsp;
+
+::: {.fragment}
+```{.r code-line-numbers=false}
+plotOutput(
+  outputId,
+  width = "100%",
+  height = "400px",
+  click = NULL,
+  dblclick = NULL,
+  hover = NULL,
+  brush = NULL,
+  inline = FALSE
+)
+```
+:::
+::::
+
+:::::
+
+## Interface builders
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.fragment}
+* Static content
+* HTML content tags
+  - link  `a()`
+  - image  `img()`
+* HTML semantic tags
+  - heading  `h3()`
+  - paragraph  `p()`
+  - styling `strong()`
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|11,16"}
+ui <- fluidPage(
+  titlePanel("Miles Per Gallon"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        "variable",
+        "Variable:", 
+        c("Cylinders" = "cyl", "Transmission" = "am", "Gears" = "gear")
+      ),
+      p("Simple text with a ", a("hyperlink", href = "#")),
+      checkboxInput("outliers", "Show outliers", TRUE)
+    ),
+    
+    mainPanel(
+      h3(textOutput("caption")),
+      plotOutput("mpg_plot")
+    )
+  )
+)
+```
+::::
+
+:::::
+
+## In practice
+
+::: {.notes}
+Run `session_01/intro_app` app in RStudio:
+* `shiny::runApp("session_01/intro_app")`
+:::
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+![](img/session_01/intro_app_screen.png)
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers=""}
+ui <- fluidPage(
+  titlePanel("Miles Per Gallon"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        "variable",
+        "Variable:", 
+        c("Cylinders" = "cyl", "Transmission" = "am", "Gears" = "gear")
+      ),
+      p("Simple text with a ", a("hyperlink", href = "#")),
+      checkboxInput("outliers", "Show outliers", TRUE)
+    ),
+    
+    mainPanel(
+      h3(textOutput("caption")),
+      plotOutput("mpg_plot")
+    )
+  )
+)
+```
+::::
+
+:::::
+
+## Addendum: Metadata
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Most shiny UI functions are visible elements included in HTML `<body>`
+* Metadata tags should be included in HTML `<head>`
+  - Add with `tags$head()`
+* Not included in this example, covered in later sessions
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+```{.html}
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <title>My test page</title>
+  </head>
+  <body>
+    <p>This is my page</p>
+  </body>
+</html>
+```
+:::
+::::
+
+:::::
+
+# Intro to Server code
+
+&nbsp;
+
+::: aside
+📁 session_01/intro_app
+:::
+
+## Server function
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.fragment}
+* The engine of your application, controlling the behaviour of UI elements
+* A function taking three arguments: `input`, `output` and `session`
+* Run once for each user session
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|4"}
+mpg_data <- mtcars
+mpg_data$am <- factor(mpg_data$am, labels = c("Automatic", "Manual"))
+
+server <- function(input, output, session) {
+  formula_text <- reactive({
+    paste("mpg ~", input$variable)
+  })
+
+  output$caption <- renderText({
+    formula_text()
+  })
+
+  output$mpg_plot <- renderPlot({
+    boxplot(
+      as.formula(formula_text()),
+      data = mpg_data,
+      outline = input$outliers,
+      col = "#75AADB",
+      pch = 19
+    )
+  })
+}
+```
+::::
+
+:::::
+
+## `input`
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+Access values from UI input elements
+
+::: {.fragment}
+* Environment containing references to inputs
+* Use the input ID from the UI definition
+  ```{.r code-line-numbers=false}
+  selectInput("variable", ...)
+  checkboxInput("outliers", ...)
+  ```
+* Values are *reactive*
+* Read-only
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|6,17"}
+mpg_data <- mtcars
+mpg_data$am <- factor(mpg_data$am, labels = c("Automatic", "Manual"))
+
+server <- function(input, output, session) {
+  formula_text <- reactive({
+    paste("mpg ~", input$variable)
+  })
+
+  output$caption <- renderText({
+    formula_text()
+  })
+
+  output$mpg_plot <- renderPlot({
+    boxplot(
+      as.formula(formula_text()),
+      data = mpg_data,
+      outline = input$outliers,
+      col = "#75AADB",
+      pch = 19
+    )
+  })
+}
+```
+::::
+
+:::::
+
+## `input` return values
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+Input elements return different data structures depending on the control
+
+::: {.fragment}
+* Check out the help page!
+* Most input functions have a "Server value" section
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.fragment}
+```{.r code-line-numbers=false}
+?checkboxInput
+```
+![](img/session_01/checkbox_help_screen.png)
+
+&nbsp;
+
+```{.r code-line-numbers=false}
+?selectInput
+```
+![](img/session_01/select_help_screen.png)
+:::
+::::
+
+:::::
+
+## `output`
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+Assign content to UI output elements
+
+::: {.fragment}
+* Environment containing references to outputs
+* Use the output ID from the UI definition
+  ```{.r code-line-numbers=false}
+  textOutput("caption")
+  plotOutput("mpg_plot")
+  ```
+* Use a `render*()` function - a *reactive wrapper*
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|9-11|13-21"}
+mpg_data <- mtcars
+mpg_data$am <- factor(mpg_data$am, labels = c("Automatic", "Manual"))
+
+server <- function(input, output, session) {
+  formula_text <- reactive({
+    paste("mpg ~", input$variable)
+  })
+
+  output$caption <- renderText({
+    formula_text()
+  })
+
+  output$mpg_plot <- renderPlot({
+    boxplot(
+      as.formula(formula_text()),
+      data = mpg_data,
+      outline = input$outliers,
+      col = "#75AADB",
+      pch = 19
+    )
+  })
+}
+```
+::::
+
+:::::
+
+## `render*()` functions
+
+::: {.notes}
+https://mastering-shiny.org/basic-ui.html#outputs
+:::
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+Output UI elements have a corresponding `render*()` function.
+
+::: {.fragment}
+* Takes an expression that returns data for the output
+* This expression becomes *reactive*
+* Output element help page has the `render*()` function to use
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.fragment}
+```{.r code-line-numbers=false}
+?textOutput
+```
+![](img/session_01/render_text_help_screen.png)
+
+&nbsp;
+
+```{.r code-line-numbers=false}
+?plotOutput
+```
+![](img/session_01/render_plot_help_screen.png)
+:::
+::::
+
+:::::
+
+## Other reactives
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+`reactive()` creates a *reactive expression*
+
+::: {.fragment}
+* An "expression whose result will change over time"
+* Reduce duplication
+* Compartmentalise code
+* Call like a function
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|5-7|10,15"}
+mpg_data <- mtcars
+mpg_data$am <- factor(mpg_data$am, labels = c("Automatic", "Manual"))
+
+server <- function(input, output, session) {
+  formula_text <- reactive({
+    paste("mpg ~", input$variable)
+  })
+
+  output$caption <- renderText({
+    formula_text()
+  })
+
+  output$mpg_plot <- renderPlot({
+    boxplot(
+      as.formula(formula_text()),
+      data = mpg_data,
+      outline = input$outliers,
+      col = "#75AADB",
+      pch = 19
+    )
+  })
+}
+```
+::::
+
+:::::
+
+## Shared objects
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+Additional arbitrary R code in server file
+
+::: {.fragment}
+* Load libraries
+* Load and preprocess data
+* Declare helper functions
+* Run once, results visible across all sessions
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|1-2|16"}
+mpg_data <- mtcars
+mpg_data$am <- factor(mpg_data$am, labels = c("Automatic", "Manual"))
+
+server <- function(input, output, session) {
+  formula_text <- reactive({
+    paste("mpg ~", input$variable)
+  })
+
+  output$caption <- renderText({
+    formula_text()
+  })
+
+  output$mpg_plot <- renderPlot({
+    boxplot(
+      as.formula(formula_text()),
+      data = mpg_data,
+      outline = input$outliers,
+      col = "#75AADB",
+      pch = 19
+    )
+  })
+}
+```
+::::
+
+:::::
+
+## `session`
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+The `session` object is used to interact with the user session
+
+::: {.fragment}
+* Client information
+* Access control
+* Complex applications
+:::
+
+&nbsp;
+
+::: {.fragment}
+Discussed in more detail in session 4!
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="4"}
+mpg_data <- mtcars
+mpg_data$am <- factor(mpg_data$am, labels = c("Automatic", "Manual"))
+
+server <- function(input, output, session) {
+  formula_text <- reactive({
+    paste("mpg ~", input$variable)
+  })
+
+  output$caption <- renderText({
+    formula_text()
+  })
+
+  output$mpg_plot <- renderPlot({
+    boxplot(
+      as.formula(formula_text()),
+      data = mpg_data,
+      outline = input$outliers,
+      col = "#75AADB",
+      pch = 19
+    )
+  })
+}
+```
+::::
+
+:::::
+
+# Reactivity
+
+## What is reactivity?
+
+::: {.incremental}
+* Shiny server logic is expressed using *reactivity*
+* Updates user UI automatically, but only when necessary
+  - "React" to changes
+* Graph of *reactive dependencies*
+  - What outputs depend on what inputs?
+  - Other reactive components (e.g. reactive expressions)
+  - Determines when code is executed and in what order
+:::
+
+## Reactive graph
+
+![](img/session_01/intro_app_reactive_graph.png)
+
+::: aside
+📁 session_01/intro_app
+:::
+
+## Concepts
+
+::: {.notes}
+```{.r}
+reactlog::reactlog_enable()
+shiny::runApp("session_01/intro_app/")
+# Ctrl + F3
+shiny::reactlogShow()
+```
+:::
+
+::: {.incremental}
+Reactive source
+: A source of data that can tell dependent objects that they need to re-execute. Usually a user input from the browser.
+
+Reactive endpoint
+: An expression performing an action that will re-execute when its dependencies change. Actions include rendering content in the browser.
+
+Reactive conductor
+: An expression inside the reactive graph, that can use and be used by other reactive components. Often used to encapsulate code used in multiple places, like a function.
+:::
+
+## Inputs and Outputs
+
+Reactive UI elements
+
+&nbsp;
+
+::: {.fragment}
+#### UI inputs - `input$*`
+* Triggers updates in dependent expressions
+* *Reactive source* used to access values from user input
+:::
+
+::: {.fragment}
+#### UI outputs - `output$* <- render*()`
+* `render*()` function re-executed as soon as dependencies change
+* *Reactive endpoint* used to render content to the browser
+:::
+
+## Expressions and Observers
+
+Expressions that are re-executed when their dependencies change
+
+&nbsp;
+
+::: {.fragment}
+#### Reactive expressions - `reactive()`
+* Evaluated *lazily*, only when they are called by dependent expressions
+* *Reactive conductor* used in other reactives - create a calculated value
+:::
+
+::: {.fragment}
+#### Observers - `observe()`
+* Evaluated *eagerly*, as soon as dependencies change
+* *Reactive endpoint* used for side effects - perform an action
+:::
+
+::: aside
+📁 session_01/reactive_observe.R
+:::
+
+## Events
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+Instead of changing with their input values, reactives can be triggered by an event
+
+::: {.fragment}
+* Use `bindEvent()` to create an event reactive
+* Often used with buttons
+:::
+::::
+
+:::: {.column width="50%"}
+```{.r}
+# Update when input$variable changes
+formula_text <- reactive(
+  paste("mpg ~", input$variable)
+)
+
+# Updated when the button
+# input$my_button is pressed
+formula_text <- reactive(
+  paste("mpg ~", input$variable)
+) |>
+  bindEvent(input$update)
+```
+::::
+
+:::::
+
+&nbsp;
+
+::: {.fragment}
+Discussed in more detail in session 4!
+:::
+
+::: aside
+📁 session_01/event_reactive.R
+:::
+
+# Wrapping up
+
+## Homework - Readings
+
+### Mastering Shiny
+
+**[Chapter 2: Basic UI](https://mastering-shiny.org/basic-ui.html)**: Introduction to common input and output elements
+
+**[Chapter 3: Basic Reactivity](https://mastering-shiny.org/basic-reactivity.html)**: Introduction to reactivity and the server function
+
+**[Chapter 4: Case study: ER injuries](https://mastering-shiny.org/basic-case-study.html)**: Detailed example of building a Shiny application from scratch
+
+### Shiny articles
+
+**[Shiny: Reactivity - An overview](https://shiny.rstudio.com/articles/reactivity-overview.html)**: Shiny introduction to reactivity
+
+## Homework - Exercise
+
+::: {.notes}
+[Shiny Gallery](https://shiny.rstudio.com/gallery/)
+:::
+
+Create a Shiny application!
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Add a few input elements
+  - Data filters
+  - Output options
+:::
+::: {.fragment}
+* Add dynamic output elements that change based on the input
+  - A table of data
+  - A simple plot
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Use a `reactive()` expression
+  - A common reactive data source for multiple outputs
+  - Add a button
+:::
+
+&nbsp;
+
+::: {.fragment}
+We'll go into layout in detail in session 2...
+:::
+::::
+
+:::::
+
+## Goodbye!
+
+&nbsp;
+
+### Next Session
+
+2. *Shiny UI - layout, styling and theming*
