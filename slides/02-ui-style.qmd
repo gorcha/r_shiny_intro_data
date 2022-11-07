@@ -1,0 +1,1277 @@
+---
+title: "Introduction to Shiny"
+subtitle: "Session 2: *Shiny UI - layout, styling and theming*"
+author: "Danny Smith"
+format:
+  revealjs:
+    theme: dark
+    width: 1280
+    height: 720
+    auto-animate: true
+    slide-number: true
+    chalkboard: false
+    preview-links: auto
+    footer: "**Introduction to Shiny** Session 2: *Shiny UI - layout, styling and theming*"
+    self-contained: true
+    reference-location: document
+---
+
+# Housekeeping
+
+```{r}
+#| output: false
+library(shiny)
+```
+
+## Course outline
+  
+1. Introduction to Shiny
+2. *Shiny UI - layout, styling and theming*
+3. Shiny UI - dynamic UI and extensions
+4. Reactivity and advanced server usage
+5. Application structure and workflow
+6. Data ingress and egress
+
+## Recap
+
+&nbsp;
+
+### Last Session
+
+1. *Introduction to Shiny*
+
+&nbsp;
+
+::: {.incremental}
+* Homework
+* Readings
+* Questions?
+:::
+
+## Resources
+
+::: {.fragment}
+#### Session materials
+
+[GitHub repo](https://github.com/gorcha/r_shiny_intro_data)
+:::
+
+&nbsp;
+
+::: {.fragment}
+#### Online resources
+
+[Outstanding User Interfaces with Shiny](https://unleash-shiny.rinterface.com/)
+
+[Mozilla Developer Network: Learn web development](https://developer.mozilla.org/en-US/docs/Learn)
+:::
+
+## This session
+
+::: {.incremental}
+* How does Shiny UI work?
+* Intro to Bootstrap
+* Styling
+* Layout
+* Theming
+* Beyond Bootstrap
+:::
+
+# How does Shiny UI work?
+
+## intro_app
+
+```{.r code-line-numbers=false}
+shiny::runApp("session_02/intro_app")
+```
+
+::: {.panel-tabset}
+
+### ui.R
+
+```{.r}
+ui <- fluidPage(
+  titlePanel("Miles Per Gallon"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        "variable",
+        "Variable:", 
+        c("Cylinders" = "cyl", "Transmission" = "am", "Gears" = "gear")
+      ),
+      p("Simple text with a ", a("hyperlink", href = "#")),
+      
+      checkboxInput("outliers", "Show outliers", TRUE)
+    ),
+    
+    mainPanel(
+      h3(textOutput("caption")),
+      plotOutput("mpg_plot")
+    )
+  )
+)
+```
+
+### server.R
+
+```{.r}
+mpg_data <- mtcars
+mpg_data$am <- factor(mpg_data$am, labels = c("Automatic", "Manual"))
+
+server <- function(input, output, session) {
+  formula_text <- reactive({
+    paste("mpg ~", input$variable)
+  })
+  
+  output$caption <- renderText({
+    formula_text()
+  })
+  
+  output$mpg_plot <- renderPlot({
+    boxplot(
+      as.formula(formula_text()),
+      data = mpg_data,
+      outline = input$outliers,
+      col = "#75AADB",
+      pch = 19
+    )
+  })
+}
+```
+
+:::
+
+## Shiny in the browser
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* `ui` function generates HTML `<body>`
+* `<head>` includes js scripts and CSS files:
+  * UI libraries
+  * Styling - Bootstrap
+  * Server interaction
+:::
+::::
+
+:::: {.column width="60%"}
+```{.html code-line-numbers="|19-56|3-18"}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <script type="application/shiny-singletons"></script>
+  <script type="application/html-dependencies">jquery[3.6.0];shiny-css[1.7.2];shiny-javascript[1.7.2];selectize[0.12.4];bootstrap[3.4.1]</script>
+<script src="jquery-3.6.0/jquery.min.js"></script>
+<link href="shiny-css-1.7.2/shiny.min.css" rel="stylesheet" />
+<script src="shiny-javascript-1.7.2/shiny.min.js"></script>
+<link href="selectize-0.12.4/css/selectize.bootstrap3.css" rel="stylesheet" />
+<script src="selectize-0.12.4/js/selectize.min.js"></script>
+<script src="selectize-0.12.4/accessibility/js/selectize-plugin-a11y.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="bootstrap-3.4.1/css/bootstrap.min.css" rel="stylesheet" />
+<link href="bootstrap-3.4.1/accessibility/css/bootstrap-accessibility.min.css" rel="stylesheet" />
+<script src="bootstrap-3.4.1/js/bootstrap.min.js"></script>
+<script src="bootstrap-3.4.1/accessibility/js/bootstrap-accessibility.min.js"></script>  <title>Miles Per Gallon</title>
+</head>
+<body>
+  <div class="container-fluid">
+    <h2>Miles Per Gallon</h2>
+    <div class="row">
+      <div class="col-sm-4">
+        <form class="well" role="complementary">
+          <div class="form-group shiny-input-container">
+            <label class="control-label" id="variable-label" for="variable">Variable:</label>
+            <div>
+              <select id="variable"><option value="cyl" selected>Cylinders</option>
+<option value="am">Transmission</option>
+<option value="gear">Gears</option></select>
+              <script type="application/json" data-for="variable" data-nonempty="">{"plugins":["selectize-plugin-a11y"]}</script>
+            </div>
+          </div>
+          <p>
+            Simple text with a 
+            <a href="#">hyperlink</a>
+          </p>
+          <div class="form-group shiny-input-container">
+            <div class="checkbox">
+              <label>
+                <input id="outliers" type="checkbox" checked="checked"/>
+                <span>Show outliers</span>
+              </label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="col-sm-8" role="main">
+        <h3>
+          <div id="caption" class="shiny-text-output"></div>
+        </h3>
+        <div id="mpg_plot" class="shiny-plot-output" style="width:100%;height:400px;"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+```
+::::
+
+:::::
+
+## Shiny UI as HTML
+
+All UI functions are essentially just HTML generators!
+
+::: {.incremental}
+* Input, output and layout functions produce HTML
+* Abstraction layer over underlying HTML
+  ```{r}
+  #| echo: true
+  #| code-line-numbers: false
+  print(textInput("text", "My text"))
+  ```
+  - A single UI element may be made up of multiple HTML tags
+  - Functions customise HTML appropriately
+* Create an HTML UI without stepping out of R
+:::
+
+## HTML generators
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+📦 [htmltools](https://rstudio.github.io/htmltools/) - tools for HTML in R
+
+::: {.incremental}
+* Functions create HTML tags
+  * Named arguments - attributes
+  * Unnamed arguments - children
+* Re-exported by Shiny
+* Test appearance with `htmltools::browsable()`
+* [Shiny HTML Tags Glossary](https://shiny.rstudio.com/articles/tag-glossary.html)
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.panel-tabset}
+
+### R
+
+```{.r}
+tagList(
+  tags$head(
+    tags$title("My first page")
+  ),
+  tags$body(
+    h1("My first heading"),
+    p("My first paragraph, with some ", strong("bold"), " text."),
+    div(
+      id = "myDiv", class = "simpleDiv",
+      "Here is a div with some attributes."
+     )
+  )
+)
+```
+
+### HTML
+
+```{.html}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<style>body{background-color:white;}</style>
+
+  <title>My first page</title>
+</head>
+<body>
+  <h1>My first heading</h1>
+  <p>
+    My first paragraph, with some 
+    <strong>bold</strong>
+     text.
+  </p>
+  <div id="myDiv" class="simpleDiv">Here is a div with some attributes.</div>
+</body>
+</html>
+```
+:::
+::::
+
+:::::
+
+::: aside
+📝 session_02/htmltools_intro.R
+:::
+
+## Literal HTML
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+Use `HTML()` function to include literal HTML strings
+
+::: {.incremental}
+* Include arbitrary blocks of HTML
+* Rarely needed - most things are easier to achieve using HTML generators
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.panel-tabset}
+
+### R
+
+```{.r}
+HTML(r"(
+  <h1>This is a heading</h1>
+  <p class="my-class">This is some text!</p>
+  <ul>
+    <li>First bullet</li>
+    <li>Second bullet</li>
+  </ul>
+)")
+```
+
+### HTML
+
+```{.html}
+<h1>This is a heading</h1>
+<p class="my-class">This is some text!</p>
+<ul>
+  <li>First bullet</li>
+  <li>Second bullet</li>
+</ul>
+```
+:::
+::::
+
+:::::
+
+# Intro to Bootstrap
+
+## Styling HTML
+
+Unstyled HTML is ugly and limited UI components are available
+
+Modern web applications use CSS and JavaScript for styling and UI functionality
+
+::: {.incremental}
+* Many applications use a *UI framework* for layout, styling and UI components
+* Shiny uses **Bootstrap**
+:::
+
+## What is Bootstrap?
+
+::: {.notes}
+Overview of Bootstrap docs - https://getbootstrap.com/
+:::
+
+::: {.fragment}
+🌐 [https://getbootstrap.com/](https://getbootstrap.com/)
+:::
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Frontend web development framework
+* JavaScript and CSS library
+* Layout is *responsive*
+:::
+::::
+
+:::: {.column width="50%"}
+
+::: {.fragment}
+Multiple versions with different styling and options
+:::
+
+::: {.incremental}
+* Shiny uses [version 3](https://getbootstrap.com/docs/3.4/) by default for backwards compatibility
+* Configure version with 📦 [bslib](https://rstudio.github.io/bslib/)
+* We will use version **5**
+:::
+
+::: {.fragment}
+```{.r code-line-numbers=false}
+fluidPage(
+  theme = bslib::bs_theme(version = 5),
+  ...
+)
+```
+:::
+::::
+
+:::::
+
+## Bootstrap features
+
+::: {.incremental}
+Responsive layout - the grid system
+: Simple grid-based layout system using rows and columns. Responsive to changes in screen size.
+
+&nbsp;
+
+UI components
+: Additional UI components for building user interfaces, for e.g. Buttons, Tabsets, Progress bars.
+
+&nbsp;
+
+Styling
+: Styling of all standard HTML elements and components, and utility classes to apply additional styling.
+:::
+
+# Styling
+
+## Bootstrap basics
+
+🌐 [Bootstrap docs](https://getbootstrap.com/docs/5.2/getting-started/introduction/)
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+Bootstrap provides CSS classes that add styling and behaviour to HTML
+
+```{.html}
+<div class="alert alert-primary" role="alert">
+  A simple primary alert—check it out!
+</div>
+```
+
+![](img/session_02/simple_alert_primary.png)
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+&nbsp;
+
+&nbsp;
+
+```{.r}
+div(
+  class = "alert alert-primary",
+  role = "alert",
+  "A simple primary alert—check it out!"
+)
+```
+
+Shiny HTML generators can include Bootstrap features by using named arguments to specify class and other attributes
+:::
+::::
+
+:::::
+
+## Bootstrap components
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.fragment fragment-index=1}
+* Shiny UI functions create Bootstrap components, adding required attributes in the generated HTML
+:::
+::: {.fragment fragment-index=2}
+* Some Bootstrap components require more complex HTML structures
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.fragment fragment-index=1}
+🌐 [Bootstrap docs](https://getbootstrap.com/docs/5.2/components/buttons/)
+
+```{.r code-line-numbers=false}
+actionButton("my_button", "Click me!")
+```
+```{.html code-line-numbers=false}
+<button id="my_button" type="button" class="btn btn-default action-button">Click me!</button>
+```
+:::
+
+&nbsp;
+
+::: {.fragment fragment-index=2}
+🌐 [Bootstrap docs](https://getbootstrap.com/docs/5.2/forms/checks-radios/)
+
+```{.r code-line-numbers=false}
+checkboxInput("my_checkbox", "Check me!")
+```
+```{.html code-line-numbers=false}
+<div class="form-group shiny-input-container">
+  <div class="checkbox">
+    <label>
+      <input id="my_checkbox" type="checkbox"/>
+      <span>Check me!</span>
+    </label>
+  </div>
+</div>
+```
+:::
+::::
+
+:::::
+
+## Styling components - Buttons
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+🌐 [Bootstrap docs](https://getbootstrap.com/docs/5.2/components/buttons/)
+
+::: {.incremental}
+* Add styling to Shiny UI elements using Bootstrap classes
+* Only available in some functions
+* Check out the help page!
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.fragment}
+```{r}
+#| echo: true
+#| code-line-numbers: false
+print(
+  actionButton(
+    "my_button",
+    "Success!",
+    class = "btn-success"
+  )
+)
+```
+:::
+
+::: {.fragment}
+![](img/session_02/action_button_usage.png)
+
+![](img/session_02/action_button_dots.png)
+:::
+::::
+
+:::::
+
+::: aside
+📝 session_02/bootstrap_styling.R
+:::
+
+## Styling containers - Button groups
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+🌐 [Bootstrap docs](https://getbootstrap.com/docs/5.2/components/button-group/)
+
+::: {.incremental}
+* Use classed `div()`s to add container styling
+* Add additional attributes (`role`, `data-*`) as needed
+* Make your own wrapper functions!
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.fragment}
+```{r}
+#| echo: true
+#| code-line-numbers: false
+buttonGroup <- function(..., class = "") {
+  div(
+    class = paste("btn-group", class),
+    role = "group",
+    ...
+  )
+}
+
+print(
+  buttonGroup(
+    class = "btn-group-lg",
+    actionButton("yes_button", "Yes", class = "btn-success"),
+    actionButton("no_button", "No", class = "btn-danger")
+  )
+)
+```
+:::
+::::
+
+:::::
+
+::: aside
+📝 session_02/bootstrap_styling.R
+:::
+
+## Creating components
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+🌐 [Bootstrap docs](https://getbootstrap.com/docs/5.2/components/alerts/#dismissing)
+
+::: {.incremental}
+* Create components from scratch using htmltools functions
+* Make your own wrapper functions!
+* Lots of components available - see the docs for examples
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.fragment}
+```{r}
+#| echo: true
+#| code-line-numbers: false
+alert <- function(..., class = "") {
+  div(
+    class = paste("alert alert-dismissible fade show", class),
+    role = "alert",
+    ...,
+    tags$button(
+      type = "button",
+      class = "btn-close",
+      `data-bs-dismiss` = "alert",
+      `aria-label` = "Close"
+    )
+  )
+}
+
+print(
+  alert(class = "alert-warning", "Something needs your attention!")
+)
+```
+:::
+::::
+
+:::::
+
+::: aside
+📝 session_02/bootstrap_styling.R
+:::
+
+## Styling static content
+
+Many styling options available...
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* [Typography](https://getbootstrap.com/docs/5.2/content/typography/)
+* [Text](https://getbootstrap.com/docs/5.2/utilities/text/)
+* [Colors](https://getbootstrap.com/docs/5.2/utilities/colors/)
+:::
+
+::: {.fragment}
+The documentation is great, have a read through for examples.
+:::
+::::
+
+:::: {.column width="60%"}
+
+&nbsp;
+
+::: {.fragment}
+```{r}
+#| echo: true
+#| code-line-numbers: false
+print(
+  tagList(
+    h1(class = "display-3 text-center", "Bootstrap styling"),
+    p(class = "lead text-center", "Some stylish examples"),
+  )
+)
+```
+:::
+::::
+
+:::::
+
+::: aside
+📝 session_02/bootstrap_styling.R
+:::
+
+# Layout
+
+## Pages
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+Page function sets up HTML, CSS, and JavaScript and determines basic layout for the page
+
+::: {.incremental}
+* `fluidPage()` - fills the full width of the browser
+* `fixedPage()` - limit maximum width based on display size
+* `fillPage()` - fills the browser with no padding
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.r-stack}
+![](img/session_02/fluid_page.png){.fragment}
+
+![](img/session_02/fixed_page.png){.fragment}
+
+![](img/session_02/fill_page.png){.fragment}
+:::
+::::
+
+:::::
+
+::: aside
+📝 session_02/pages.R
+:::
+
+## Shiny layouts
+
+::: {.notes}
+Run through [Shiny Application Layout Guide](https://shiny.rstudio.com/articles/layout-guide.html)
+:::
+
+Shiny provides some basic layouts - all are built on the Bootstrap grid
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+
+&nbsp;
+
+::: {.fragment}
+* Bootstrap grid layout
+  - `*Row()`
+  - `column()`
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Segmenting layouts
+  - `navbarPage()`
+  - `tabsetPanel()`
+  - `navlistPanel()`
+* Pre-built layouts
+  - `sidebarLayout()`
+:::
+::::
+
+:::::
+
+::: {.fragment}
+[Shiny Application Layout Guide](https://shiny.rstudio.com/articles/layout-guide.html)
+:::
+
+## Grid layout
+
+::: {.notes}
+Switch to example code
+:::
+
+Bootstrap layout is a *grid* made up of *rows* containing *columns*.
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### Rows
+* `fluidRow()`/`fixedRow()`
+* `fillRow()`
+:::
+
+::: {.fragment}
+#### Columns
+* `column()`
+* Total width adds up to 12
+* Can be nested
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+```{.r code-line-numbers="|1-2|3-20|4-6,9-19|10-13,16-18"}
+ui <- fixedPage(
+  theme = bslib::bs_theme(version = 5),
+  fixedRow(
+    column(4, "1 of 3"),
+    column(4, "2 of 3"),
+    column(4, "3 of 3")
+  ),
+  fixedRow(
+    column(4,
+      fixedRow(
+        column(6, "1 of 2"),
+        column(6, "2 of 2")
+      )
+    ),
+    column(8,
+      fixedRow(
+        column(12, "1 of 1")
+      )
+    )
+  )
+)
+```
+:::
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/bootstrap_grid.R
+:::
+
+## Layout utilities
+
+Bootstrap utility classes can be used for layout elements
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* [Spacing](https://getbootstrap.com/docs/5.2/utilities/spacing/)
+  - Add margins and padding to containers and UI components
+* [Colors](https://getbootstrap.com/docs/5.2/utilities/borders/)
+* [Borders](https://getbootstrap.com/docs/5.2/utilities/borders/)
+:::
+::::
+
+:::: {.column width="60%"}
+
+&nbsp;
+
+::: {.fragment}
+```{.r}
+ui <- fluidPage(
+  theme = bslib::bs_theme(version = 5),
+  class = "bg-secondary",
+  fixedRow(
+    column(4, class = "p-2 bg-info border", "1 of 3"),
+    column(4, class = "p-2 bg-light border", "2 of 3"),
+    column(4, class = "p-2 bg-warning border", "3 of 3")
+  )
+)  
+```
+:::
+::::
+
+:::::
+
+## Segmenting layouts
+
+::: {.notes}
+Switch to example code
+:::
+
+Segmenting layouts break your application into selectable pages of content 
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment fragment-index=1}
+* `tabsetPanel()`, `navlistPanel()`
+* `tabPanel()` for each page
+* Place inside an existing layout
+:::
+
+::: {.fragment fragment-index=3}
+#### Multi-page layouts
+* `navbarPage()`
+* Top-level pages of content
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment fragment-index=2}
+```{.r}
+ui <- fixedPage(
+  theme = bslib::bs_theme(version = 5),
+  h1("Tabs!"),
+  
+  tabsetPanel(
+    tabPanel(
+      "Plot",
+      plotOutput("my_plot")
+    ),
+    tabPanel(
+      "Table",
+      tableOutput("my_table")
+    )
+  )
+)
+```
+:::
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/segmenting_layout.R
+:::
+
+## Pre-built layouts
+
+::: {.notes}
+Switch to example code
+:::
+
+Shiny provides some simple pre-built layouts and panels
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment fragment-index=1}
+#### Layout and panels
+* `titlePanel()`
+* `sideBarLayout()`, `sidebarPanel()`, `mainPanel()`
+:::
+
+::: {.fragment fragment-index=3}
+#### Extension packages
+* Limited layouts available in Shiny
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment fragment-index=2}
+```{.r}
+ui <- fluidPage(
+  theme = bslib::bs_theme(version = 5),
+  titlePanel("Miles Per Gallon"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      checkboxInput("outliers", "Show outliers", TRUE)
+    ),
+    
+    mainPanel(
+      h3(textOutput("caption")),
+      plotOutput("mpg_plot")
+    )
+  )
+)
+```
+:::
+::::
+
+:::::
+
+::: aside
+📁 session_02/intro_app
+:::
+
+# Theming
+
+::: {.notes}
+Run
+* `bslib::bs_theme_preview()`
+* `bslib::run_with_themer("session_02/bootstrap_styling.R")`
+:::
+
+## Bootstrap themes
+
+📦 [bslib](https://rstudio.github.io/bslib/) - customise Bootstrap styling defaults
+
+::: {.incremental}
+* Create a theme with `bslib::bs_theme()`
+* Specify `theme` in the page function
+:::
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+```{.r}
+library(shiny)
+library(bslib)
+
+ui <- fluidPage(
+  theme = bs_theme(
+    version = 5,
+    bg = "#101010", 
+    fg = "#FDF7F7", 
+    primary = "#ED79F9", 
+    base_font = font_google("Prompt"),
+    "progress-bar-bg" = "orange"
+  ),
+  ...
+)
+```
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+Set the Bootstrap version
+
+```{.r code-line-numbers="false"}
+bs_theme(version = 5)
+```
+:::
+
+::: {.fragment}
+Use a [Bootswatch](https://bootswatch.com/) theme
+
+```{.r code-line-numbers="false"}
+bs_theme(bootswatch = ...)
+```
+:::
+
+::: {.fragment}
+Test theme changes interactively
+
+```{.r code-line-numbers="false"}
+bs_theme_preview(theme)
+run_with_themer(appDir)
+```
+:::
+
+::::
+
+:::::
+
+## Plot themes
+
+::: {.notes}
+`run_with_themer("session_02/thematic.R")`
+:::
+
+📦 [thematic](https://rstudio.github.io/thematic/) - apply bslib theme to plots produced by gplot, lattice or base R
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Use the current Bootstrap theme in plots
+* Call `thematic_shiny()` to automatically apply styling to graphics
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.fragment}
+```{.r}
+# Example from https://rstudio.github.io/thematic/
+library(shiny)
+library(ggplot2)
+library(thematic)
+
+# Call thematic_shiny() prior to launching the app, to change 
+# R plot theming defaults for all the plots generated in the app
+thematic_shiny(font = "auto")
+
+ui <- fluidPage(
+  # bslib makes it easy to customize CSS styles for things 
+  # rendered by the browser, like tabsetPanel()
+  # https://rstudio.github.io/bslib
+  theme = bslib::bs_theme(
+    bg = "#002B36", fg = "#EEE8D5", primary = "#2AA198",
+    # bslib also makes it easy to import CSS fonts
+    base_font = bslib::font_google("Pacifico")
+  ),
+  tabsetPanel(
+    type = "pills",
+    tabPanel("ggplot", plotOutput("ggplot")),
+    tabPanel("lattice", plotOutput("lattice")),
+    tabPanel("base", plotOutput("base"))
+  )
+)
+
+server <- function(input, output) {
+  output$ggplot <- renderPlot({
+    ggplot(mtcars, aes(wt, mpg, label = rownames(mtcars), color = factor(cyl))) +
+      geom_point() +
+      ggrepel::geom_text_repel()
+  })
+  output$lattice <- renderPlot({
+    lattice::show.settings()
+  })
+  output$base <- renderPlot({
+    image(volcano, col = thematic_get_option("sequential"))
+  })
+}
+
+shinyApp(ui, server)
+```
+:::
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/thematic.R
+:::
+
+# Beyond Bootstrap
+
+## Other styling libraries
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+Alternative functions to build layouts and additional UI components
+
+📦 [shinydashboard](https://rstudio.github.io/shinydashboard/)
+
+```{.r filename="app.R"}
+library(shiny)
+library(shinydashboard)
+
+ui <- dashboardPage(
+  dashboardHeader(),
+  dashboardSidebar(),
+  dashboardBody()
+)
+
+server <- function(input, output, session) {
+}
+
+shinyApp(ui, server)
+```
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.incremental}
+🌐 [RinteRface](https://rinterface.com/#packages)
+: Collection of packages providing HTML templates and alternative styling libraries
+
+🌐 [Appsilon Shiny Tools](https://shiny.tools/)
+: A set of Shiny utility packages, including some styling and layout alternatives
+
+🌐 [Awesome Shiny Extensions](https://github.com/nanxstats/awesome-shiny-extensions#theming)
+: Almost exhaustive list of Shiny related packages - see "Theming"
+:::
+::::
+
+:::::
+
+## Custom CSS
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment fragment-index=1}
+#### www sub-directory
+
+* Contains resources your app may link to, such as images or scripts
+* File name in R is relative to www
+:::
+
+::: {.fragment fragment-index=2}
+#### Include scripts
+
+* Use a `link()` tag with `head()` to load a stylesheet
+:::
+
+::: {.fragment fragment-index=3}
+🌐 [Shiny docs](https://shiny.rstudio.com/articles/css.html)
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment fragment-index=1}
+```{.default code-line-numbers=false}
+shinyapp
+├── www
+│   └── custom.css
+├── server.R
+└── ui.R
+```
+```{.r code-line-numbers=false}
+shiny::runApp("shinyapp")
+```
+:::
+
+&nbsp;
+
+::: {.fragment fragment-index=2}
+```{.r filename="ui.R"}
+ui <- fluidPage(
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
+  ),
+  div(class = "red-div", "Red background")
+)
+```
+```{.css filename="custom.css"}
+.red-div {
+  background-color: red;
+}
+```
+:::
+::::
+
+:::::
+
+::: {.aside}
+📁 session_02/custom_css
+:::
+
+
+# Wrapping up
+
+## Homework - Readings
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+### Mastering Shiny
+
+**[Mastering Shiny Chapter 6: Layout, themes, HTML](https://mastering-shiny.org/action-layout.html)**
+
+### Shiny articles
+
+**[Shiny: Customize your UI with HTML](https://shiny.rstudio.com/articles/html-tags.html)**
+
+**[Shiny Application Layout Guide](https://shiny.rstudio.com/articles/layout-guide.html)**
+::::
+
+:::: {.column width="50%"}
+### Mozilla Developer Network
+
+**[HTML basics](https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/HTML_basics)**
+
+**[CSS basics](https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/CSS_basics)**
+
+**[JavaScript basics](https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/JavaScript_basics)**
+::::
+
+:::::
+
+## Homework - Exercise
+
+Style your Shiny application from session 1
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Use the Bootstrap grid
+* Segment your layout with a tabset or navlist
+:::
+
+::: {.fragment}
+* Add some styled components
+  - Can be static or Shiny UI
+  - Style a button
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Apply a theme with bslib
+  - `bslib::bs_theme_preview()` for ideas
+:::
+  
+::: {.fragment}
+* Use thematic to apply the bslib theme to a plot
+  - Add a plot if you don't already have one ;)
+:::
+::::
+
+:::::
+
+## Goodbye!
+
+&nbsp;
+
+### Next Session
+
+3. *Shiny UI - dynamic UI and extensions*
