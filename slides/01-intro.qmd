@@ -18,6 +18,11 @@ format:
 
 # Housekeeping
 
+```{r}
+#| output: false
+library(shiny)
+```
+
 ## Course outline
 
 ::: {.incremental}
@@ -231,11 +236,6 @@ ui <- fluidPage(
 
 ::: {.fragment}
 &nbsp;
-
-```{r}
-#| output: false
-library(shiny)
-```
 
 ```{r}
 #| echo: true
@@ -1312,7 +1312,7 @@ Discussed in more detail in session 4!
 
 ### Shiny articles
 
-**[Shiny: Reactivity - An overview](https://shiny.rstudio.com/articles/reactivity-overview.html)**: Shiny introduction to reactivity
+**[Reactivity - An overview](https://shiny.rstudio.com/articles/reactivity-overview.html)**: Shiny introduction to reactivity
 
 ## Homework - Exercise
 

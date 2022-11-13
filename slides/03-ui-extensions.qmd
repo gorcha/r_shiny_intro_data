@@ -1,0 +1,1029 @@
+---
+title: "Introduction to Shiny"
+subtitle: "Session 3: *Shiny UI - dynamic UI and extensions*"
+author: "Danny Smith"
+format:
+  revealjs:
+    theme: dark
+    width: 1280
+    height: 720
+    auto-animate: true
+    slide-number: true
+    chalkboard: false
+    preview-links: auto
+    footer: "**Introduction to Shiny** Session 3: *Shiny UI - dynamic UI and extensions*"
+    self-contained: true
+    reference-location: document
+---
+  
+# Housekeeping
+
+```{r}
+#| output: false
+library(shiny)
+```
+
+## Course outline
+  
+1. Introduction to Shiny
+2. Shiny UI - layout, styling and theming
+3. *Shiny UI - dynamic UI and extensions*
+4. Reactivity and advanced server usage
+5. Application structure and workflow
+6. Data ingress and egress
+
+## Recap
+
+&nbsp;
+
+### Last Session
+
+2. *Shiny UI - layout, styling and theming*
+
+&nbsp;
+
+::: {.incremental}
+* Homework
+* Readings
+* Questions?
+:::
+
+## Resources
+
+::: {.fragment}
+#### Session materials
+
+[GitHub repo](https://github.com/gorcha/r_shiny_intro_data)
+:::
+
+&nbsp;
+
+::: {.fragment}
+#### Online resources
+
+[Outstanding User Interfaces with Shiny](https://unleash-shiny.rinterface.com/)
+
+[Interactive web-based data visualization with R, plotly, and shiny](https://plotly-r.com/)
+:::
+
+## This session
+
+::: {.incremental}
+* Dynamic UI
+  - Updating input elements
+  - Dynamic visibility
+  - Creating UI in the server
+  - Modifying UI with JavaScript
+* UI Extensions
+* Interactive outputs
+:::
+
+# Dynamic UI
+
+## Why dynamic UI?
+
+Create UI that changes contextually
+
+::: {.incremental}
+* UI changes in complex ways based on user interaction
+* Build UI with data that is not known before the session begins
+* Session based UI
+  - Control visibility of UI based on session attributes (user name, security
+    groups)
+* Contextual UI
+  - Only show controls that are relevant to the current context
+  - Modify UI attributes (labels, classes, enabled/disabled)
+:::
+
+## Dynamic UI in Shiny
+
+::: {.incremental}
+Update input elements - `update*Input()`
+: Update value and other attributes of an existing input element.
+
+&nbsp;
+
+Dynamic visibility - `tabsetPanel()` and `conditionalPanel()`
+: Show and hide sections of UI, from the server or using a pre-defined condition.
+
+&nbsp;
+
+Create UI - `renderUI()`, `insertUI()` and `removeUI()`
+: Render a block of UI code from the server function into a `uiOutput()` element, or insert and remove UI based on [jQuery selectors](https://api.jquery.com/category/selectors/).
+:::
+
+# Updating input elements
+
+## Use case
+
+::: {.incremental}
+* Change the value or attributes of an input element
+  - Current value
+  - Label
+  - Options for select input
+* UI elements respond to user interaction
+  - Contextual UI
+:::
+
+## Update functions
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+Each Shiny input has an update function with a common structure:
+
+::: {.fragment}
+* `update*Input()`
+* `session` - the current Shiny `session` object
+* `inputId` - the input ID from the UI definition
+* Parameters to update
+:::
+::::
+
+:::: {.column width="60%"}
+
+::: {.fragment}
+```{.r code-line-numbers=false}
+updateCheckboxInput(
+  session = getDefaultReactiveDomain(),
+  inputId,
+  label = NULL,
+  value = NULL
+)
+```
+:::
+
+&nbsp;
+
+::: {.fragment}
+```{.r code-line-numbers=false}
+updateSliderInput(
+  session = getDefaultReactiveDomain(),
+  inputId,
+  label = NULL,
+  value = NULL,
+  min = NULL,
+  max = NULL,
+  step = NULL,
+  timeFormat = NULL,
+  timezone = NULL
+)
+```
+:::
+::::
+
+:::::
+
+## Update functions in the server
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+Updating input is a *side effect* so we use a *Reactive endpoint*
+
+::: {.incremental}
+* Use `observe()`
+  - Update control based on other elements
+  - `bindEvent()` to update on button press
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|9-13|17-23"}
+ui <- fixedPage(
+  checkboxInput("my_checkbox", "Check me"),
+  sliderInput("my_slider", "Slide me", 0, 20, 10),
+  actionButton("toggle_checkbox", "Toggle checkbox")
+)
+
+server <- function(input, output, session) {
+  observe({
+    updateTextInput(
+      session,
+      "my_checkbox",
+      label = paste("Slider value is", input$my_slider)
+    )
+  })
+
+  observe({
+    updateCheckboxInput(
+      session,
+      "my_checkbox",
+      value = !input$my_checkbox
+    )
+  }) |>
+    bindEvent(input$toggle_checkbox)
+}
+```
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/dynamic_update_input.R
+:::
+
+# Dynamic visibility
+
+## Use case
+
+::: {.incremental}
+* Show or hide sections of the UI based on user interaction
+  - Pre-defined UI elements
+  - Only visibility can be controlled
+* Two general approaches
+  - Segmented UI - `tabsetPanel()`
+  - Single UI block - `conditionalPanel()`
+:::
+
+::: {.fragment}
+**Important note:** these methods control visibility, but the HTML for all UI elements is still rendered and sent to the browser. *These methods are not appropriate for enforcing access restrictions!*
+:::
+
+## Segmented UI
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Use tabsets!
+* Tabs with no headers
+  - `tabsetPanel(type = "hidden")`
+  - `tabPanelBody()`
+* Change displayed tab from the server
+  - `updateTabsetPanel()`
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|7-9,13|10-12|19-25"}
+ui <- fixedPage(
+  sidebarLayout(
+    sidebarPanel(
+      radioButtons("tab_select", "Select content", 1:3, 1)
+    ),
+    mainPanel(
+      tabsetPanel(
+        id = "tab_set",
+        type = "hidden",
+        tabPanelBody("panel1", "Panel 1 content"),
+        tabPanelBody("panel2", "Panel 2 content"),
+        tabPanelBody("panel3", "Panel 3 content")
+      )
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  observe({
+    updateTabsetPanel(
+      session,
+      "tab_set",
+      selected = paste0("panel", input$tab_select)
+    )
+  })
+}
+```
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/dynamic_visibility.R
+:::
+
+## Conditional UI block
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* `conditionalPanel()`
+* `condition` determines content visibility
+  - JavaScript expression
+  - Input and output values `input.*` / `output.*`
+* Create dummy output for complex conditions
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|2-6|8-12|16-20"}
+ui <- fixedPage(
+  checkboxInput("show_panel", "Show panel?"),
+  conditionalPanel(
+    "input.show_panel == true",
+    "My panel!"
+  ),
+  
+  checkboxGroupInput("checks", "Check some boxes...", choices = 1:10),
+  conditionalPanel(
+    "output.show_complex_panel == true",
+    "The number of selected checkboxes is a multiple of 3!"
+  )
+)
+    
+server <- function(input, output, session) {
+  output$show_complex_panel <- reactive({
+    length(input$checks) %% 3 == 0 & length(input$checks) != 0
+  })
+  
+  outputOptions(output, "show_complex_panel", suspendWhenHidden = FALSE)
+}
+```
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/dynamic_visibility.R
+:::
+
+# Creating UI in the server
+
+## Use case
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Create complex UI
+  - More complex variation than show/hide
+* UI structure varies at runtime
+  - Variable number of elements
+  - Variable location
+* Insert static UI elements
+  - Alerts
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Access control
+  - UI is only sent to the browser when rendered
+  - Safe method to only serve content to users with appropriate access
+:::
+::::
+
+:::::
+
+## Pre-defined location
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Render UI to a pre-defined location
+  - `uiOutput()` determines UI position
+  - `renderUI()` generates UI components in the server function
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|3|7-16|9-12|18-21"}
+ui <- fixedPage(
+  checkboxInput("render_ui", "Render UI?"),
+  uiOutput("custom_ui")
+)
+
+server <- function(input, output, session) {
+  output$custom_ui <- renderUI({
+    if (input$render_ui) {
+      tagList(
+        selectInput("dataset", label = "Dataset", choices = ls("package:datasets")),
+        tableOutput("table")
+      )
+    } else {
+      NULL
+    }
+  })
+  
+  output$table <- renderTable({
+    dataset <- get(input$dataset, "package:datasets")
+    dataset
+  })
+}
+```
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/dynamic_render_ui.R
+:::
+
+## Add or remove anywhere
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Add and remove UI in the server function
+  - `insertUI()`
+  - `removeUI()`
+* Use [jQuery selectors](https://api.jquery.com/category/selectors/) to choose location
+  - Where to insert
+  - What to remove
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|10-14|19-22|4|11-12,20"}
+ui <- fixedPage(
+  actionButton("add", "Add text box"),
+  actionButton("clear_div", "Delete all"),
+  div(id = "text_div")
+)
+
+server <- function(input, output, session) {
+  observe({
+    id <- paste0("txt", input$add)
+    insertUI(
+      selector = "#text_div",
+      where = "beforeEnd",
+      ui = textInput(id, paste("Text box:", id))
+    )
+  }) |>
+    bindEvent(input$add)
+ 
+  observe({
+    removeUI(
+      selector = "#text_div > div",
+      multiple = TRUE
+    )
+  }) |>
+    bindEvent(input$clear_div)
+}
+```
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/dynamic_insert_ui.R
+:::
+
+## `insertUI()` and `removeUI()` functions
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* `selector` - where should UI be inserted / what UI should be removed?
+  - [jQuery selectors](https://api.jquery.com/category/selectors/)
+  - Extension of [CSS selectors](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Selectors)
+* `where` - where your UI object should go relative to the selector
+* `ui` - UI object to insert
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+```{.r code-line-numbers=false}
+insertUI(
+  selector,
+  where = c("beforeBegin", "afterBegin", "beforeEnd", "afterEnd"),
+  ui,
+  multiple = FALSE,
+  immediate = FALSE,
+  session = getDefaultReactiveDomain()
+)
+```
+:::
+
+&nbsp;
+
+::: {.fragment}
+```{.r code-line-numbers=false}
+removeUI(
+  selector,
+  multiple = FALSE,
+  immediate = FALSE,
+  session = getDefaultReactiveDomain()
+)
+```
+:::
+::::
+
+:::::
+
+## Building UI
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Use any function you would use in your UI
+  - `tagList()` or `div()` to group multiple tags
+* Take advantage of R
+  - `lapply()` for bulk creation
+* Dynamic IDs
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|4-7|14-31|19,25,28"}
+server <- function(input, output, session) {
+  output$custom_ui <- renderUI({
+    if (input$render_ui) {
+      tagList(
+        selectInput("dataset", label = "Dataset", choices = ls("package:datasets")),
+        tableOutput("table")
+      )
+    } else {
+      NULL
+    }
+  })
+  
+  output$list_ui <- renderUI({
+    lapply(input$item_list, function(x) {
+      fixedRow(
+        class = "border pt-2 mt-2",
+        column(3,
+          textInput(
+            inputId = paste0("item_lbl_", x),
+            label = "Button label",
+            value = paste0("Button for item ", x)
+          )
+        ),
+        column(3,
+          actionButton(paste0("item_btn_", x), "")
+        ),
+        column(6,
+          textOutput(paste0("item_txt_", x))
+        )
+      )
+    })
+  })
+}
+```
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/dynamic_render_ui.R
+:::
+
+## Accessing created UI from the server
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Dynamic UI is accessible from the server
+  - Accessible from `input` and `output` as usual
+  - `observe()` with `[[` for dynamic IDs
+* Be careful of duplicate IDs!
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|2-5|7-13|15-23"}
+server <- function(input, output, session) {
+  output$table <- renderTable({
+    dataset <- get(input$dataset, "package:datasets")
+    dataset
+  })
+  
+  observe({
+    lapply(input$item_list, function(x) {
+      output[[paste0("item_txt_", x)]] <- renderText({
+        paste0("The button label is: ", input[[paste0("item_lbl_", x)]])
+      })
+    })
+  })
+
+  observe({
+    lapply(input$item_list, function(x) {
+      updateTextInput(
+        session,
+        inputId = paste0("item_btn_", x),
+        label = input[[paste0("item_lbl_", x)]]
+      )
+    })
+  })
+}
+```
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/dynamic_render_ui.R
+:::
+
+# Modifying UI with JavaScript
+
+## Executing JavaScript with shinyjs
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+📦 [shinys](https://deanattali.com/shinyjs/)
+
+::: {.incremental}
+* Run JavaScript in the browser
+* `useShinyjs()` in UI
+* Control UI attributes
+  - `show()` / `enable()`
+* Run arbitrary JavaScript code with `runjs()`
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|4|14-17|19-22|24-27"}
+library(shinyjs)
+
+ui <- fixedPage(
+  useShinyjs(),
+
+  actionButton("js_message", "What's the time?"),
+  
+  actionButton("js_toggle_enabled", "Enable/disable"),
+  actionButton("js_toggle_visible", "Show/hide")
+  textInput("text", "Text")
+)
+
+server <- function(input, output) {
+  observe({
+    toggleState("text")
+  }) |>
+    bindEvent(input$js_toggle_enabled)
+  
+  observe({
+    toggle("text")
+  }) |>
+    bindEvent(input$js_toggle_visible)
+  
+  observe({
+    runjs("var today = new Date(); alert(today);")
+  }) |>
+    bindEvent(input$js_message)
+}
+```
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/dynamic_javascript.R
+:::
+
+## Communicating via JavaScript
+
+Shiny supports complex custom JavaScript behaviour
+
+::: {.fragment}
+[Shiny: Communicating with Shiny via JavaScript](https://shiny.rstudio.com/articles/communicating-with-js.html)
+:::
+
+::: {.incremental}
+* Send JavaScript from R using a *custom message handler*
+* Set an input value from JavaScript using `Shiny.setInputValue();`
+* shinyjs is built on this functionality
+:::
+
+&nbsp;
+
+::: {.fragment}
+Only necessary for advanced usage - usually shinyjs is more than enough!
+:::
+
+# UI Extensions
+
+## Extension libraries
+
+Shiny and many other R packages wrap frontend JavaScript libraries to support more complex UI components
+
+::: {.fragment}
+🌐 [Awesome Shiny Extensions](https://github.com/nanxstats/awesome-shiny-extensions)
+:::
+
+::: {.incremental}
+* Complex interactivity
+* Visualisation
+* Packages provide Shiny *bindings*
+  - `*Input()`, `*Output()` and `render*()` functions
+* Configuration can get complicated - you might need some JavaScript!
+:::
+
+&nbsp;
+
+## Example extensions
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### [UI Components](https://github.com/nanxstats/awesome-shiny-extensions#ui-components)
+:::
+
+::: {.incremental}
+🌐 [selectize](https://shiny.rstudio.com/articles/selectize.html)
+: Select lists using the [Selectize.js](https://selectize.dev/) library. This is the default for select boxes created in Shiny.
+
+📦 [DT](https://rstudio.github.io/DT/)
+: Advanced interactive tables using the [DataTables](https://datatables.net/) jQuery plugin.
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### [Visualisation](https://github.com/nanxstats/awesome-shiny-extensions#visualization)
+:::
+
+::: {.incremental}
+📦 [plotly](https://plotly.com/r/)
+: Interactive graphs using the [plotly](https://plotly.com/graphing-libraries/) library. Automatically converts ggplot2 plots.
+
+📦 [leaflet](https://rstudio.github.io/leaflet/)
+: Interactive maps using the [leaflet](https://leafletjs.com/) mapping library. Lots of further extension packages are available.
+:::
+::::
+
+:::::
+
+## DataTables
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+📦 [DT](https://rstudio.github.io/DT/) - advanced interactive tables
+
+::: {.incremental}
+* Lots of features
+  - Pagination, filtering, sorting
+  - Formatting and styling
+* Plugins and extensions
+* Configure with the `options` argument - [docs](https://datatables.net/reference/option/)
+  - Can get very complex!
+:::
+::::
+
+:::: {.column width="50%"}
+```{.r}
+library(DT)
+
+ui <- fixedPage(
+  dataTableOutput("table")
+)
+
+server <- function(input, output, session) {
+  output$table <- renderDataTable({
+    datatable(
+      mtcars,
+      class = "hover",
+      selection = "none",
+      extensions = "Buttons",
+      options = list(
+        buttons = c("copy", "csv", "excel", "pdf", "print"),
+        dom = "Bfrtip",
+        info = FALSE,
+        ordering = TRUE,
+        order = list(list(0, "asc")),
+        paging = FALSE,
+        searching = FALSE
+      )
+    ) |>
+      formatStyle(
+        "disp",
+        background = styleColorBar(mtcars$disp, "steelblue")
+      )
+  })
+}
+```
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/datatables.R
+:::
+
+## Creating your own UI extensions
+
+Shiny allows you to create your own input and output elements
+
+::: {.incremental}
+* `*Input()` / `*Output()` function produces UI html
+* `render*()` function prepares data to send to the browser
+* JavaScript *input binding* or *output binding* tells Shiny how to communicate with the server
+:::
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### Shiny documentation
+
+🌐 [Build custom input objects](https://shiny.rstudio.com/articles/building-inputs.html)
+
+🌐 [Build custom output objects](https://shiny.rstudio.com/articles/building-outputs.html)
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### 📦 [htmlwidgets](https://www.htmlwidgets.org/develop_intro.html)
+
+Helper functions to create your own JavaScript library wrappers. The basis of many UI extension packages.
+:::
+::::
+
+:::::
+
+# Interactive outputs
+
+## Outputs as inputs
+
+Some outputs also operate as inputs...
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### Plots
+
+* Specify input IDs for events in `plotOutput()`
+  - Click events
+  - Area selection
+  - Mouse position
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### Tables
+
+* Access information about the state of a DT table
+  - Cell click events
+  - Visible rows
+:::
+::::
+
+:::::
+
+::: {.fragment}
+Lots of options available - check out the examples and documentation!
+:::
+
+::: {.aside}
+📝 session_02/interactive_output.R
+:::
+
+## Interactive plots
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+🌐 [Shiny docs](https://shiny.rstudio.com/articles/plot-interaction.html)
+
+::: {.incremental}
+* Specify input ID in `plotOutput()` args 
+* Access from `input` object
+* Use helpers for data frame filtering
+  - `brushedPoints()`
+  - `nearPoints()`
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|7|20|18-21"}
+library(ggplot2)
+library(DT)
+
+ui <- fixedPage(
+  plotOutput(
+    "mtcars_plot",
+    brush = "mtcars_plot_brush"
+  ),
+  dataTableOutput("mtcars_table")
+)
+
+server <- function(input, output, session) {
+  output$mtcars_plot <- renderPlot({
+    ggplot(mtcars, aes(wt, mpg)) + geom_point()
+  })
+  
+  output$mtcars_table <- renderDataTable({
+    brushedPoints(
+      mtcars,
+      input$mtcars_plot_brush
+    ) |> 
+      datatable(selection = "none")
+  })
+}
+```
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/interactive_output.R
+:::
+
+## Interactive tables
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+🌐 [DT docs](https://rstudio.github.io/DT/shiny.html)
+
+::: {.incremental}
+* Automatically creates a set of input elements
+  - Input IDs named `{tableId}_{attr}`
+* Many attributes available
+  - Row/column selections
+  - Current search string
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|6|11"}
+library(ggplot2)
+library(DT)
+
+ui <- fixedPage(
+  plotOutput("mtcars_plot"),
+  dataTableOutput("mtcars_table")
+)
+
+server <- function(input, output, session) {
+  output$mtcars_plot <- renderPlot({
+    mtcars_sub <- mtcars[input$mtcars_table_rows_selected, ]
+    ggplot(mtcars_sub, aes(wt, mpg)) + geom_point()
+  })
+  
+  output$mtcars_table <- renderDataTable({
+    datatable(
+      mtcars,
+      selection = "multiple"
+    )
+  })
+}
+```
+::::
+
+:::::
+
+::: {.aside}
+📝 session_02/interactive_output.R
+:::
+
+# Wrapping up
+
+## Homework - Readings
+
+### Mastering Shiny
+
+**[Chapter 10: Dynamic UI](https://mastering-shiny.org/action-dynamic.html)**
+
+**[Chapter 7: Graphics](https://mastering-shiny.org/action-graphics.html)**
+
+### Shiny articles
+
+**[Build a dynamic UI that reacts to user input](https://shiny.rstudio.com/articles/dynamic-ui.html)**
+
+**[Graphics & visualization](https://shiny.rstudio.com/articles/#graphics)**
+
+**[Shiny extensions](https://shiny.rstudio.com/articles/#extensions)**
+
+## Homework - Exercise
+
+Continue with your shiny application from session 2
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Create some dynamic UI
+  - Update input elements based on user interaction
+  - Create a button that controls UI visibility
+  - Render some UI from the server
+  - Enable/disable UI using shinyjs
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Use a component from a UI extension library
+  - Use DT to create a `datatable`
+  - Play around with some styling options
+:::
+  
+::: {.fragment}
+* Add an interactive output
+  - Make a table that responds to plot selections
+:::
+::::
+
+:::::
+
+
+## Goodbye!
+
+&nbsp;
+
+### Next Session
+
+4. *Reactivity and advanced server usage*
