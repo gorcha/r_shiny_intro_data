@@ -1,0 +1,983 @@
+---
+title: "Introduction to Shiny"
+subtitle: "Session 4: *Reactivity and the user session*"
+author: "Danny Smith"
+format:
+  revealjs:
+    theme: dark
+    width: 1280
+    height: 720
+    auto-animate: true
+    slide-number: true
+    chalkboard: false
+    preview-links: auto
+    footer: "**Introduction to Shiny** Session 4: *Reactivity and the user session*"
+    self-contained: true
+    reference-location: document
+---
+  
+# Housekeeping
+
+```{r}
+#| output: false
+library(shiny)
+```
+
+## Course outline
+  
+1. Introduction to Shiny
+2. Shiny UI - layout, styling and theming
+3. Shiny UI - dynamic UI and extensions
+4. *Reactivity and the user session*
+5. Application structure and workflow
+6. Data ingress and egress
+
+## Recap
+
+&nbsp;
+
+### Last Session
+
+3. *Shiny UI - dynamic UI and extensions*
+
+&nbsp;
+
+::: {.incremental}
+* Homework
+* Readings
+* Questions?
+:::
+
+## Resources
+
+::: {.fragment}
+#### Session materials
+
+[GitHub repo](https://github.com/gorcha/r_shiny_intro_data)
+:::
+
+&nbsp;
+
+::: {.fragment}
+#### Online resources
+
+*Nothing new this session*
+:::
+
+## This session
+
+::: {.incremental}
+* Reactivity revisited
+  - Reactive graph in practice
+  - Reactive building blocks
+  - Debugging reactivity
+* Shiny `session` object
+* Bookmarking
+:::
+
+# Reactivity revisited
+
+## Reactive components
+
+::: {.incremental}
+Reactive source
+: A source of data that can tell dependent objects that they need to re-execute. Usually a user input from the browser.
+
+Reactive endpoint
+: An expression performing an action that will re-execute when its dependencies change. Actions include rendering content in the browser.
+
+Reactive conductor
+: An expression inside the reactive graph, that can use and be used by other reactive components. Often used to encapsulate code used in multiple places, like a function.
+:::
+
+## Reactive graph
+
+::: {.incremental}
+* Graph of *reactive dependencies*
+  - What outputs depend on what inputs?
+  - Other reactive components (e.g. reactive expressions)
+  - Determines when code is executed and in what order
+* Graph of *reactive components*
+  - Connected in the dependency graph
+  - Shiny keeps track of *reactive state* of each component
+  - What components need to be executed?
+:::
+
+## Reactive states
+
+Reactive components can be in one of several states
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+Ready
+: Component has been executed and its value is cached pending access by a dependent
+:::
+
+&nbsp;
+
+::: {.fragment}
+Calculating
+: Currently executing - waiting on dependencies to execute
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+Invalidated
+: Component has been invalidated and must be re-executed before use
+:::
+
+&nbsp;
+
+::: {.fragment}
+Invalidating
+: Currently invalidating - waiting on dependents to invalidate
+:::
+::::
+
+:::::
+
+## Reactive computation
+
+Reactive computation is a cycle of *execution* and *invalidation*
+
+::: {.fragment}
+Execution
+: Invalidated reactive endpoints are executed, triggering execution of any invalidated dependencies. This phase produces outputs and runs observers.
+:::
+
+&nbsp;
+
+::: {.fragment}
+Invalidation
+: Reactive sources change, invalidating any dependents. This phase starts when inputs and other sources change, and triggers the execution phase when complete.
+:::
+
+# Reactive graph in practice
+
+&nbsp;
+
+::: aside
+📝 session_04/reactive_graph.R
+:::
+
+## Visualising the reactive graph
+
+📦 [reactlog](https://rstudio.github.io/reactlog/)
+
+::: {.incremental}
+* Visualise and explore the reactive graph of an application
+* `reactlog_enable()`, Ctrl + F3 to view the graph
+* Replay the log after closing with `reactlogShow()`
+:::
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+
+::::
+
+:::: {.column width="60%"}
+::: {.fragment}
+```{.r code-line-numbers="7"}
+library(shiny) 
+
+ui <- fixedPage()
+
+server <- function(input, output, session) { }
+
+reactlog::reactlog_enable()
+shinyApp(ui, server)
+```
+:::
+::::
+
+:::::
+
+## Execution begins
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Execute endpoints
+  - All invalidated endpoints
+  - Execution order is random
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Build relationships
+  - Determine dependencies
+  - Add dependencies to the graph
+:::
+::::
+
+:::::
+
+![](img/session_04/reactive_invalidated.png)
+
+::: {.fragment}
+At the start of the session all components are *invalidated*
+:::
+
+## Execution continues
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Execute dependencies
+  - Only if *invalidated*
+  - Follow the graph!
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Continue recursively
+  - Determine dependencies
+  - Execute one by one
+:::
+::::
+
+:::::
+
+![](img/session_04/reactive_calculating.png)
+
+::: {.fragment}
+The execution phase *builds the dependency graph*
+:::
+
+## Ready
+
+::: {.fragment}
+* Execution is complete
+  - Complete dependency graph
+  - All components are *ready*
+:::
+
+![](img/session_04/reactive_ready.png)
+
+::: {.fragment}
+The reactive graph is complete, pending input changes
+:::
+
+## Invalidation
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Inputs change
+  - *Invalidate* dependents
+  - Follow the graph!
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Remove relationships
+  - The graph is *invalidated*
+  - Dependencies may change
+:::
+::::
+
+:::::
+
+![](img/session_04/reactive_invalidating.png)
+
+::: {.fragment}
+The invalidation phase *removes dependencies* from the graph
+:::
+
+## Re-execution
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Re-execute invalidated endpoints
+  - Execution order is random
+  - Re-build dependency graph
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Re-execute dependencies
+  - Only if *invalidated*
+  - Continue recursively
+:::
+::::
+
+:::::
+
+![](img/session_04/reactive_re-execute.png)
+
+::: {.fragment}
+The execution phase *re-builds the dependency graph*
+:::
+
+## Re-ready
+
+::: {.fragment}
+* Re-execution is complete
+  - Complete dependency graph
+  - All components are *ready*
+:::
+
+![](img/session_04/reactive_re-ready.png)
+
+::: {.fragment}
+The cycle continues...
+:::
+
+# Reactive building blocks
+
+## Expressions and Observers
+
+Expressions that are re-executed when their dependencies change
+
+&nbsp;
+
+::: {.incremental}
+Reactive expressions - `reactive()`
+: *Reactive conductor* used in other reactives - create a calculated value
+
+Observers - `observe()`
+: *Reactive endpoint* used for side effects - perform an action
+
+Events - `bindEvent()`
+: Execute an expression or observer only when an event occurs
+:::
+
+::: aside
+📝 session_04/reactive_observe.R
+
+📝 session_04/reactive_event.R
+:::
+
+## Reactive values
+
+Create simple values that are *reactive sources*
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* `reactiveVal()`
+  - A single value
+  - Use like a function
+
+* `reactiveValues()`
+  - Multiple values
+  - Use like a list
+  
+* Update from the server
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|2,6,12|3,7,13"}
+server <- function(input, output, session) {
+  input_text_change <- reactiveVal(0)
+  input_change <- reactiveValues(a = 0, b = 0)
+  
+  observe({
+    input_text_change(input_text_change() + 1)
+    input_change$a <- input_change$a + 1
+  }) |>
+    bindEvent(input$text_a)
+  
+  observe({
+    input_text_change(input_text_change() + 1)
+    input_change$b <- input_change$b + 1
+  }) |>
+    bindEvent(input$text_b)
+}
+```
+::::
+
+:::::
+
+::: aside
+📝 session_04/reactive_values.R
+:::
+
+## Isolation
+
+Use reactive components without adding a dependency
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Use `isolate()`
+  - Access reactive value or expression
+  - Do not re-execute when reactive changes
+* Avoid circular dependencies
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|2-8|5-7|10-15|14"}
+server <- function(input, output, session) {
+  output$number_text <-  renderText({
+    input$print
+    
+    isolate({
+      paste0("The number is: ", input$number)
+    })
+  })
+  
+  number_change <- reactiveValues(count = 0)
+  
+  observe({
+    input$number
+    number_change$count <- isolate(number_change$count) + 1
+  })
+}
+```
+::::
+
+:::::
+
+::: aside
+📝 session_04/reactive_isolate.R
+:::
+
+## Timed invalidation
+
+Invalidate reactive expression at regular intervals
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* `invalidateLater()`
+  - Invalidate a single expression
+* `reactiveTimer()`
+  - Reactive component
+  - Use in multiple places
+  - Synchronise!
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|2-5|3|7-17|7,10,15"}
+server <- function(input, output, session) {
+  output$random_x <- renderText({
+    invalidateLater(1000)
+    runif(1)
+  })
+  
+  my_timer <- reactiveTimer(500)
+  
+  output$random_y <- renderText({
+    my_timer()
+    runif(1)
+  })
+  
+  output$random_z <- renderText({
+    my_timer()
+    runif(1)
+  })
+}
+```
+::::
+
+:::::
+
+::: aside
+📝 session_04/reactive_timer.R
+:::
+
+## Polling
+
+::::: {.columns}
+
+Reactive data source that checks for changes at regular intervals
+
+:::: {.column width="40%"}
+::: {.incremental}
+* `reactiveFileReader()`
+  - File path and reader
+  - Check most recent modified time
+* `reactivePoll()`
+  - Custom check function
+  - Value function loads data
+  - Use for external sources
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|2-7|9-14"}
+server <- function(input, output, session) {
+  data_csv <- reactiveFileReader(
+    1000,
+    session, 
+    filePath = "data.csv",
+    readFunc = read.csv
+  )
+  
+  data_api <- reactivePoll(
+    1000,
+    session, 
+    checkFunc = function() api_last_modified(),
+    valueFunc = function() api_data()
+  )
+}
+```
+::::
+
+:::::
+
+## Outside the graph
+
+::: {.fragment}
+Invalidating inputs in the server function is *outside the graph*
+:::
+
+::: {.incremental}
+* `update*Input()` functions
+* Changing reactive values
+* Can reconnect the output side to the input side
+:::
+
+::: {.fragment}
+**Be careful!**
+:::
+
+::: {.incremental}
+* Easy to accidentally create circular dependencies
+* Make sure you understand how the reactive graph is working if you're doing fancy things
+:::
+
+# Debugging reactivity
+
+## In the console
+
+Traditional R debugging methods
+
+::: {.fragment}
+* Printing
+  - Print to the console!
+  - `print()` / `message()`
+:::
+::: {.fragment}
+* Interactive debugging
+  - Breakpoints to observe internal states
+  - `browser()`
+:::
+
+## In the browser
+
+Shiny specific debugging methods
+
+::: {.fragment}
+* Showcase mode
+  - `shiny::runApp(display.mode = "showcase")`
+  - See the code in your app, 
+:::
+::: {.fragment}
+* 📦 [reactlog](https://rstudio.github.io/reactlog/)
+  - `reactlog_enable()`, Ctrl + F3 to view the graph
+  - Replay the log after closing with `reactlogShow()`
+:::
+
+## Playing around
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+`reactiveConsole()`
+
+::: {.incremental}
+* Enable reactivity in the console
+* Experiment!
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+```{.r code-line-numbers=false}
+library(shiny)
+
+reactiveConsole(TRUE)
+
+x <- reactiveVal(10)
+
+y <- observe({
+   message("The value of x is ", x())
+})
+#> The value of x is 10
+
+x(20)
+#> The value of x is 20
+
+x(30)
+#> The value of x is 30
+```
+:::
+::::
+
+:::::
+
+# Shiny `session` object
+
+&nbsp;
+
+::: aside
+📝 session_04/session.R
+:::
+
+## Manipulating the user session
+
+The `session` object allows us to access information about and perform operations on the user session.
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Advanced functionality
+  - Access control
+  - Client information
+  - URL query string
+  - Callback functions
+* Check out the help page!
+:::
+::::
+
+:::: {.column width="60%"}
+
+&nbsp;
+
+::: {.fragment}
+```{.r code-line-numbers=false}
+?session
+```
+![](img/session_04/session_help_screen.png)
+:::
+::::
+
+:::::
+
+## Access control
+
+Access information about the current user credentials
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* User name
+  - `session$user`
+* User groups
+  - `session$groups`
+  - Vector of group names
+* Use with `renderUI()`
+:::
+
+::: {.fragment}
+Hard to experiment without deploying an application!
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|2-11|3|13-22|14"}
+server <- function(input, output, session) {
+  output$superuser_ui <- renderUI({
+    if (session$user == "superuser") {
+      tagList(
+        h2("Superuser UI!"),
+        "God mode"
+      )
+    } else {
+      NULL
+    }
+  })
+  
+  output$admin_ui <- renderUI({
+    if ("admin" %in% session$groups) {
+      tagList(
+        h2("Admin UI!"),
+        "Some fancy admin stuff"
+      )
+    } else {
+      NULL
+    }
+  })
+}
+```
+::::
+
+:::::
+
+## `session$clientData`
+
+Access information about the current client
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Access and manipulate URL
+  - `getQueryString()`
+  - `updateQueryString()`
+  - `getUrlHash()`
+* Client information
+  - Other URL info
+  - `pixelratio`
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|2-7|3|9-12|10|14-16|15"}
+server <- function(input, output, session) {
+  output$query <- renderText({
+    query <- getQueryString()
+    
+    query_text <- paste(names(query), query, sep = "=", collapse = ", ")
+    paste("Query string values are:\n", query_text)
+  })
+  
+  observe({
+    updateQueryString(input$query_text, mode = "push")
+  }) |>
+    bindEvent(input$update_query)
+  
+  output$pixelratio <- renderText({
+    session$clientData$pixelratio
+  })
+}
+```
+::::
+
+:::::
+
+## `session$userData`
+
+Access and store our own information about the user session
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* An environment to store arbitrary data
+  - Accessible across the session
+  - This is *not reactive*
+* Use cases
+  - Package development
+  - Modules
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|2-4|6-10"}
+server <- function(input, output, session) {
+  observe({
+    session$userData$my_variable <- input$my_variable_text
+  })
+  
+  output$my_variable <- renderText({
+    input$print_my_variable
+    
+    session$userData$my_variable
+  })
+}
+```
+::::
+
+:::::
+
+# Bookmarking
+
+&nbsp;
+
+&nbsp;
+
+::: aside
+📝 session_04/bookmarking_url.R
+
+📝 session_04/bookmarking_server.R
+:::
+
+## Restoring application state
+
+Bookmarking allows you to save the state of the application, and return the application to this state with a special URL
+
+::: {.incremental}
+* Preset the values of inputs 
+* The reactive graph is *replayed* as if the user set these inputs
+* Two methods of bookmarking - `"url"` and `"server"`
+:::
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+Encoded state - `"url"`
+: The state of the application is stored in the query string
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+Saved state - `"server"`
+: The state of the application is saved to disk on the server
+:::
+::::
+
+:::::
+
+## Enabling bookmarking
+
+::: {.fragment}
+Single file applications
+
+::::: {.columns}
+
+:::: {.column width="45%"}
+* `shinyApp()`
+* `enableBookmarking` argument
+::::
+
+:::: {.column width="55%"}
+```{.r filename="app.R" code-line-numbers=false}
+ui <- fixedPage()
+
+server <- function(input, output, session) { }
+
+shinyApp(ui, server, enableBookmarking = "url")
+```
+::::
+
+:::::
+:::
+
+::: {.fragment}
+Multi-file applications
+
+::::: {.columns}
+
+:::: {.column width="45%"}
+* `enableBookmarking()`
+* global.R
+::::
+
+:::: {.column width="55%"}
+```{.r filename="ui.R" code-line-numbers=false}
+ui <- fixedPage()
+```
+
+```{.r filename="server.R" code-line-numbers=false}
+server <- function(input, output, session) { }
+```
+
+```{.r filename="global.R" code-line-numbers=false}
+enableBookmarking("url")
+```
+::::
+
+:::::
+:::
+
+## Bookmark button
+
+Pre-defined button that produces a bookmark URL for the current application state
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Enable bookmarking
+* Convert UI to a function taking a `request` argument
+* Add a `bookmarkButton()`
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|13|3|7"}
+library(shiny)
+
+ui <- function(request) {
+  fluidPage(
+    textInput("my_text", "Write some text here"),
+    checkboxInput("my_checkbox", "Check me"),
+    bookmarkButton()
+  )
+}
+
+server <- function(input, output, session) { }
+
+shinyApp(ui, server, enableBookmarking = "url")
+```
+::::
+
+:::::
+
+::: {.fragment}
+See the help page for more details!
+:::
+
+# Wrapping up
+
+## Homework - Readings
+
+### Mastering Shiny
+
+**[Chapter 13-16: Mastering reactivity](https://mastering-shiny.org/reactivity-intro.html)**
+
+**[Chapter 11: Bookmarking](https://mastering-shiny.org/action-bookmark.html)**
+
+### Shiny articles
+
+**[Debugging Shiny applications](https://shiny.rstudio.com/articles/debugging.html)**
+
+**[Bookmarking](https://shiny.rstudio.com/articles/#bookmarking)**
+
+**[Learn about your user with session$clientData](https://shiny.rstudio.com/articles/client-data.html)**
+
+## Homework - Exercise
+
+Continue with your shiny application from session 3
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Explore reactivity
+  - Use reactlog
+  - Investigate what happens in the reactive graph as you interact with your application
+:::
+::: {.fragment}
+* Experiment with our new reactive components
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Use the session object
+  - Create some `userData`
+:::
+
+::: {.fragment}
+* Enable bookmarking
+  - Try both `"url"` and `"server"`
+  - How are they different?
+:::
+::::
+
+:::::
+
+## Goodbye!
+
+&nbsp;
+
+### Next Session
+
+5. *Application structure and workflow*
