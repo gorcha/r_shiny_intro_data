@@ -28,7 +28,7 @@ library(shiny)
 1. Introduction to Shiny
 2. Shiny UI - layout, styling and theming
 3. *Shiny UI - dynamic UI and extensions*
-4. Reactivity and advanced server usage
+4. Reactivity and the user session
 5. Application structure and workflow
 6. Data ingress and egress
 
@@ -1026,4 +1026,4 @@ Continue with your shiny application from session 2
 
 ### Next Session
 
-4. *Reactivity and advanced server usage*
+4. *Reactivity and the user session*
