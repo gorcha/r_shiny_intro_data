@@ -10,9 +10,9 @@ Slides for each session are in the `slides` sub-directory, for e.g. `slides/01-i
 1. Introduction to Shiny
 2. Shiny UI - layout, styling and theming
 3. Shiny UI - dynamic UI and extensions
-4. Reactivity and advanced server usage
-5. Application structure and workflow
-6. Data ingress and egress
+4. Reactivity and the user session
+5. Shiny modules, working with data
+6. Application structure and workflow
 
 ## License
 
