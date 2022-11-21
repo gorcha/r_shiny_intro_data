@@ -1,0 +1,1141 @@
+---
+title: "Introduction to Shiny"
+subtitle: "Session 5: *Shiny modules, working with data*"
+author: "Danny Smith"
+format:
+  revealjs:
+    theme: dark
+    width: 1280
+    height: 720
+    auto-animate: true
+    slide-number: true
+    chalkboard: false
+    preview-links: auto
+    footer: "**Introduction to Shiny** Session 5: *Shiny modules, working with data*"
+    self-contained: true
+    reference-location: document
+---
+  
+# Housekeeping
+
+```{r}
+#| output: false
+library(shiny)
+```
+
+## Course outline
+  
+1. Introduction to Shiny
+2. Shiny UI - layout, styling and theming
+3. Shiny UI - dynamic UI and extensions
+4. Reactivity and the user session
+5. *Shiny modules, working with data*
+6. Application structure and workflow
+
+## Recap
+
+&nbsp;
+
+### Last Session
+
+4. *Reactivity and the user session*
+
+&nbsp;
+
+::: {.incremental}
+* Homework
+* Readings
+* Questions?
+:::
+
+## Resources
+
+::: {.fragment}
+#### Session materials
+
+[GitHub repo](https://github.com/gorcha/r_shiny_intro_data)
+:::
+
+&nbsp;
+
+::: {.fragment}
+#### Online resources
+
+[RStudio: Databases using R](https://solutions.rstudio.com/db/)
+:::
+
+## This session
+
+::: {.incremental}
+* Intro to Shiny modules
+* Modules in practice
+* Data for Shiny applications
+* Working with databases
+* Working with user data
+:::
+
+# Intro to Shiny modules
+
+&nbsp;
+
+📝 session_05/module_counter.R
+
+## What are shiny modules?
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+Shiny equivalent of functions!
+
+::: {.incremental}
+* Compartmentalise code
+  - Group UI components with a single return value
+  - Self-contained - great for testing!
+
+* Reuse complex sets of components
+  - Simplify app structure
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+Module structure
+:::
+
+::: {.incremental}
+* A module has a UI and server function
+  - Define UI components
+  - Define behaviour
+  - Configurable using arguments
+  - Include in app UI and server
+  - Linked by ID
+:::
+::::
+
+:::::
+
+## Module UI
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Function taking the module ID as input
+* Other arguments to configure UI
+* Return UI object
+* IDs use *namespacing*
+  - Avoid ID conflicts
+  - Use the `NS()` function
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|1|5|4-7|2|5,6"}
+counterUI <- function(id, label = "Counter") {
+  ns <- NS(id)
+  
+  tagList(
+    actionButton(ns("button"), label = label),
+    verbatimTextOutput(ns("out"))
+  )
+}
+```
+::::
+
+:::::
+
+## Namespacing
+
+Namespacing allows us to avoid conflicts between component IDs in the module and IDs used elsewhere
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Creates an ID combining the module and component ID
+  - Component ID is known when creating the module
+  - Module ID is defined when the module is called
+* Only necessary when creating UI
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.incremental}
+* The `NS()` function combines the module ID and component IDs
+  ```{r}
+  #| echo: true
+  #| code-line-numbers: false
+  NS("module_id", "component_id")
+  ```
+* `ns <- NS(id)` creates a helper function for the current module
+  ```{r}
+  #| echo: true
+  #| code-line-numbers: false
+  ns <- NS("module_id")
+  ns("component_id")
+  ```
+:::
+::::
+
+:::::
+
+## Module server
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Function taking the module ID as input
+* Other arguments to configure server behaviour
+* Return `moduleServer()`
+  * Module ID
+  * Server function
+* Namespacing in the server function is automatic
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|1|12|2-17|3|4-16|7,11"}
+counterServer <- function(id, prefix = NULL) {
+  moduleServer(
+    id,
+    function(input, output, session) {
+      count <- reactiveVal(0)
+      
+      observeEvent(input$button, {
+        count(count() + 1)
+      })
+      
+      output$out <- renderText({
+        paste0(prefix, count())
+      })
+      
+      count
+    }
+  )
+}
+```
+::::
+
+:::::
+
+## Modules in an application
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Call the module UI function in your app UI
+* Call the module server function in your app server function
+* Modules can be used multiple times with different IDs
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|8|14|9,16"}
+library(shiny)
+
+source("module_counter.R", local = TRUE)
+
+ui <- fixedPage(
+  headerPanel("Counters"),
+  fixedRow(
+    column(6, counterUI("counter")),
+    column(6, counterUI("counter2", "My 2nd counter"))
+  )
+)
+
+server <- function(input, output, session) {
+  counterServer("counter")
+  
+  counterServer("counter2")
+}
+
+shinyApp(ui, server)
+```
+::::
+
+:::::
+
+::: aside
+📝 session_05/module_counter_app.R
+:::
+
+## App function
+
+::: {.notes}
+Source module_counter.R
+
+Run `counterApp()`
+:::
+
+Good practice to create an *app function* for module testing
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Function wraps a minimal application demonstrating the module
+* Return a `shinyApp()` object
+* Call from the console
+  - Allow specification of module args
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|2-8|10|1"}
+counterApp <- function(label = "Counter", prefix = "The current count is: ") {
+  ui <- fluidPage(
+    counterUI("counter", label),
+  )
+  
+  server <- function(input, output, session) {
+    counterServer("counter", prefix)
+  }
+  
+  shinyApp(ui, server)
+}
+```
+
+&nbsp;
+
+::: {.fragment}
+```{.r code-line-numbers="false"}
+counterApp(
+  "My button",
+  "My button has been pressed this many times: "
+)
+```
+:::
+::::
+
+:::::
+
+## Documentation
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+📦 [roxygen2](https://roxygen2.r-lib.org/)
+
+::: {.incremental}
+* Document module functions with roxygen tags
+  - Same conventions as documenting a function
+* App function is a form of documentation
+  - Equivalent of examples
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r filename="module_counter.R" code-line-numbers="|1-6|16-21|41-59"}
+#' Counter module UI
+#'
+#' @param id Module ID.
+#' @param label Label for the counter button.
+#'
+#' @return A tagList containing counter module UI elements.
+counterUI <- function(id, label = "Counter") {
+  ns <- NS(id)
+  
+  tagList(
+    actionButton(ns("button"), label = label),
+    verbatimTextOutput(ns("out"))
+  )
+}
+
+#' Counter module server
+#'
+#' @param id Module ID.
+#' @param prefix Prefix for counter value text output.
+#'
+#' @return The counter as a reactive value.
+counterServer <- function(id, prefix = NULL) {
+  moduleServer(
+    id,
+    function(input, output, session) {
+      count <- reactiveVal(0)
+      
+      observeEvent(input$button, {
+        count(count() + 1)
+      })
+      
+      output$out <- renderText({
+        paste0(prefix, count())
+      })
+      
+      count
+    }
+  )
+}
+
+#' Counter module application
+#'
+#' Create a simple example application using the counter module.
+#' 
+#' @param label Label for the counter button.
+#' @param prefix Prefix for counter value text output.
+#'
+#' @return A shinyApp object
+counterApp <- function(label = "Counter", prefix = "The current count is: ") {
+  ui <- fluidPage(
+    counterUI("counter", label),
+  )
+  
+  server <- function(input, output, session) {
+    counterServer("counter", prefix)
+  }
+  
+  shinyApp(ui, server)
+}
+```
+::::
+
+:::::
+
+# Modules in practice
+
+## Reactive modules
+
+Modules often need to be integrated with the reactive graph of your application
+
+* Return values to use in your server function
+* Respond to changes in inputs elsewhere in your application
+
+To achieve this we can pass *reactive* inputs and outputs to and from the module server
+
+## Reactive server outputs
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Return a value from the module server function
+* Must be reactive object
+  - `reactive()`
+  - `reactiveValues()`
+* List for multiple values
+* Assign result of module in server function
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|4-13|9-12|5-7,10|11|17-26|18|21,25"}
+selectDatasetServer <- function(id) {
+  moduleServer(
+    id,
+    function(input, output, session) {
+      dataset <- reactive({
+        dataset <- as.data.frame(get(input$dataset, "package:datasets"))
+      })
+      
+      list(
+        data = dataset,
+        name = reactive(input$dataset)
+      )
+    }
+  )
+}
+
+server <- function(input, output, session) {
+  dataset <- selectDatasetServer("dataset_select")
+  
+  output$module_out <- renderText({
+    paste0("Selected dataset `", dataset$name(), "`")
+  })
+  
+  output$table <- renderTable({
+    dataset$data()
+  })
+}
+```
+::::
+
+:::::
+
+::: aside
+📝 session_05/module_reactive.R
+:::
+
+## Reactive server inputs
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Use a reactive value from elsewhere in the application
+* Pass as argument to module server function
+  - The reactive object, not the value
+* Use like a normal reactive
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|1|9|21-24|19,23"}
+selectVariableServer <- function(id, dataset) {
+  moduleServer(
+    id,
+    function(input, output, session) {
+      observe({
+        updateSelectInput(
+          session,
+          "variable",
+          choices = names(dataset())
+        )
+      })
+      
+      reactive(input$variable)
+    }
+  )
+}
+
+server <- function(input, output, session) {
+  dataset <- selectDatasetServer("dataset_select")
+  
+  variable <- selectVariableServer(
+    "variable_select",
+    dataset$data
+  )
+  
+  output$module_out <- renderText({
+    paste0(
+      "Selected variable `", variable(), "` ",
+      "from dataset `", dataset$name(), "`"
+    )
+  })
+}
+```
+::::
+
+:::::
+
+::: aside
+📝 session_05/module_reactive.R
+:::
+
+## Namespacing and dynamic UI
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* UI created inside the server function needs to be namespaced
+* Use the `session` object to access the module namespace
+  - `session$ns(id)`
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|5-14|8,9"}
+dynamicTableServer <- function(id) {
+  moduleServer(
+    id,
+    function(input, output, session) {
+      output$custom_ui <- renderUI({
+        if (input$render_ui) {
+          tagList(
+            selectInput(session$ns("dataset"), label = "Dataset", choices = ls("package:datasets")),
+            tableOutput(session$ns("table"))
+          )
+        } else {
+          NULL
+        }
+      })
+      
+      output$table <- renderTable({
+        dataset <- get(input$dataset, "package:datasets")
+        dataset
+      })
+    }
+  )
+}
+```
+::::
+
+:::::
+
+::: aside
+📝 session_05/module_render_ui.R
+:::
+
+## Nesting modules
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.fragment}
+Use modules inside other modules
+:::
+
+::: {.incremental}
+* Modules are like functions
+  - Composable
+  - Multiple levels of nesting
+* Modules are like apps
+  - UI and server pairing
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|4-5|16-18"}
+selectDataVarUI <- function(id) {
+  ns <- NS(id)
+  tagList(
+    selectDatasetUI(ns("dataset_select")),
+    selectVariableUI(ns("variable_select")),
+    
+    verbatimTextOutput(ns("module_out"), placeholder = TRUE),
+    tableOutput(ns("table"))
+  )
+}
+
+selectDataVarServer <- function(id) {
+  moduleServer(
+    id,
+    function(input, output, session) {
+      dataset <- selectDatasetServer("dataset_select")
+      
+      variable <- selectVariableServer("variable_select", dataset$data)
+      
+      output$module_out <- renderText({
+        paste0(
+          "Selected variable `", variable(), "` ",
+          "from dataset `", dataset$name(), "`"
+        )
+      })
+      
+      output$table <- renderTable({
+        dataset$data()
+      })
+      
+      list(
+        data = dataset$data,
+        name = dataset$name,
+        var = variable
+      )
+    }
+  )
+}
+```
+::::
+
+:::::
+
+::: aside
+📝 session_05/module_nested.R
+:::
+
+# Data for Shiny applications
+
+## Approaches
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment fragment-index=1}
+Local data files
+: Simple pre-prepared data that is application specific
+:::
+
+::: {.fragment fragment-index=3}
+* Data is specific to this application
+  - Not shared!
+:::
+::: {.fragment fragment-index=4}
+* Changes with the application
+  - No change between dev cycles
+  - Read-only
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment fragment-index=2}
+External data sources
+: Data that changes over time outside of the Shiny app
+:::
+
+::: {.fragment fragment-index=3}
+* Shared data sources
+  - Used by multiple processes
+:::
+::: {.fragment fragment-index=4}
+* Changes over time
+  - Updated outside of dev cycle
+  - User actions update data
+::::
+:::
+
+:::::
+
+## Local data files
+
+Data that *lives with the application*
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Intrinsically linked to the application set up
+  - Configuration
+* Strictly read only
+  - Re-deploying the application replaces the data
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Local files
+  - rds, csv, SQLite database
+* Pre-processed
+  - Do as much processing as possible outside of the app
+  - Minimise the work done during the user session
+:::
+::::
+
+:::::
+
+::: {.fragment}
+Best practices for incorporating static files are discussed in session 6!
+:::
+
+## External data sources
+
+Data that *changes over time*
+
+Data that is *shared*
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Changes independent of the app
+  - Updated by an external system
+  - Reporting
+* Read write
+  - Updated by users
+  - CRUD applications
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.incremental}
+* External sources
+  - Databases
+  - Web services / APIs
+* External processing
+  - Databases are much more efficient than R!
+:::
+::::
+
+:::::
+
+# Working with databases
+
+## Databases and R
+
+Several R packages are available for accessing databases
+
+::: {.fragment}
+We prefer 📦 [DBI](https://dbi.r-dbi.org/)
+:::
+
+::: {.incremental}
+* Developed and maintained by RStudio
+* Consistent interface for accessing many different database platforms
+* Integrated with other packages
+:::
+
+::: {.fragment}
+Our focus is Shiny database usage - see the RStudio [Databases using R](https://solutions.rstudio.com/db/) documentation for a good general overview of database access
+:::
+
+## Shared connections with pool
+
+Managing database connections is a pain!
+
+::: {.incremental}
+* Creating new connection takes time
+* Sharing connections between sessions is hard
+:::
+
+&nbsp;
+
+::: {.fragment}
+📦 [pool](https://rstudio.github.io/pool/) takes care of this for you
+:::
+
+::: {.incremental}
+* Creates a *pool* of database connections
+* Opens and closes database connection as necessary
+:::
+
+## Using pool
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Drop in replacements for DBI functions
+  - `dbPool()` for `dbConnect()`
+  - `poolClose()` for `dbDisconnect()`
+* Use the pool as you would a DBI connection
+:::
+::::
+
+:::: {.column width="60%"}
+
+&nbsp;
+
+```{.r code-line-numbers="|1-7|9|11"}
+pool <- dbPool(
+  drv = RMySQL::MySQL(),
+  dbname = "shinydemo",
+  host = "shiny-demo.csa7qlmguqrf.us-east-1.rds.amazonaws.com",
+  username = "guest",
+  password = "guest"
+)
+
+dbGetQuery(pool, "SELECT * from City LIMIT 5;")
+
+poolClose(pool)
+```
+::::
+
+:::::
+
+## Avoiding SQL injections
+
+User inputs can't be trusted - 🌐 [XKCD: Exploits of a Mom](https://xkcd.com/327/)
+
+&nbsp;
+
+::: {.fragment}
+Two methods to avoid mailicious user inputs with DBI
+:::
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Parameterised queries
+  - Pass variable arguments to the database server as *parameters*
+  - `dbGetQuery(params = )`
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Escaping user inputs
+  - Apply appropriate escaping rules for the DBI connection
+  - `sqlInterpolate()`
+  - `glue::glue_sql()`
+:::
+::::
+
+:::::
+
+## Performance considerations
+
+Working with a database has its own performance considerations
+
+::: {.incremental}
+* Data aggregation queries can be expensive
+* Summarising data across multiple tables can require expensive joins
+:::
+
+::: {.fragment}
+Design your database and queries to minimise processing time
+:::
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Pre-calculate tables
+  - Pre-aggregate data
+  - Pre-process expensive joins
+  - Scheduled re-calculation
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Index your tables!
+* Avoid expensive filters (e.g. `like`)
+* Profile your queries
+:::
+::::
+
+:::::
+
+# Working with user data
+
+## Validating user inputs
+
+::: {.incremental}
+* Check that required values have been provided
+  - Don't try to produce outputs before input exists
+  - Avoid Shiny printing `NULL` to output
+* User inputs can't be trusted!
+  - Make sure they're in the expected range
+  - Provide feedback to the user
+:::
+
+## Values exist
+
+Check that any value has been provided
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* `req()` - Require a non-empty value for an input before processing
+* Stops expression
+  - Clear output by default
+  - `cancelOutput = TRUE` to leave existing
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|13-26|14-15"}
+server <- function(input, output, session) {
+  # Return the selected dataset
+  dataset <- reactive({
+    dataset <- as.data.frame(get(input$dataset, "package:datasets"))
+  })
+  
+  # Render selected dataset
+  output$table <- renderTable({
+    dataset()
+  })
+  
+  # Render a summary of the selected variable
+  output$summary <- renderPrint({
+    # Don't run if a dataset hasn't been selected
+    req(dataset())
+    
+    # Return an error message if the selected variable isn't in dataset()
+    validate(
+      need(
+        input$variable %in% names(dataset()),
+        "Select a valid variable"
+      )
+    )
+    
+    summary(dataset()[input$variable])
+  })
+}
+```
+::::
+
+:::::
+
+::: aside
+📝 session_05/user_data_req_validate.R
+:::
+
+## Values are valid
+
+Check that valid values have been provided
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* `validate()`
+  - Function producing message on failure
+  - Printed to output area
+* `need()`
+  - Helper function
+  - Condition and message
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|13-26|17-23"}
+server <- function(input, output, session) {
+  # Return the selected dataset
+  dataset <- reactive({
+    dataset <- as.data.frame(get(input$dataset, "package:datasets"))
+  })
+  
+  # Render selected dataset
+  output$table <- renderTable({
+    dataset()
+  })
+  
+  # Render a summary of the selected variable
+  output$summary <- renderPrint({
+    # Don't run if a dataset hasn't been selected
+    req(dataset())
+    
+    # Return an error message if the selected variable isn't in dataset()
+    validate(
+      need(
+        input$variable %in% names(dataset()),
+        "Select a valid variable"
+      )
+    )
+    
+    summary(dataset()[input$variable])
+  })
+}
+```
+::::
+
+:::::
+
+::: aside
+📝 session_05/user_data_req_validate.R
+:::
+
+## Input feedback
+
+📦 [shinyFeedback](https://merlinoa.github.io/shinyFeedback/) - styled user feedback on UI controls
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* `useShinyFeedback()` in UI to enable
+* `showFeedback*()` to add feedback to control
+* `hideFeedback()` to remove
+:::
+::::
+
+:::: {.column width="60%"}
+```{.r code-line-numbers="|4|14-24|16-19|21"}
+library(shinyFeedback)
+
+ui <- fluidPage(
+  useShinyFeedback(),
+  
+  numericInput(
+    "positive_number",
+    "Enter a number",
+    value = -5
+  )
+)
+
+server <- function(input, output, session) {
+  observe({
+    if (input$positive_number < 0) {
+      showFeedbackWarning(
+        "positive_number",
+        "Please enter a positive number"
+      )
+    } else {
+      hideFeedback("positive_number")
+    }
+  }) |>
+    bindEvent(input$positive_number)
+}
+```
+::::
+
+:::::
+
+::: aside
+📝 session_05/user_data_shiny_feedback.R
+:::
+
+## User notifications
+
+Use Shiny's default notification system
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* `showNotification()`
+  - Styled notifications
+  - Temporary or permanent
+  - Closable
+* `removeNotification()`
+  - Remove an existing notification by ID
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.fragment}
+```{.r code-line-numbers=false}
+showNotification(
+  ui,
+  action = NULL,
+  duration = 5,
+  closeButton = TRUE,
+  id = NULL,
+  type = c("default", "message", "warning", "error"),
+  session = getDefaultReactiveDomain()
+)
+```
+:::
+
+&nbsp;
+
+::: {.fragment}
+```{.r code-line-numbers=false}
+removeNotification(
+  id,
+  session = getDefaultReactiveDomain()
+)
+```
+:::
+::::
+
+:::::
+
+::: aside
+📝 session_05/user_notifications.R
+:::
+
+# Wrapping up
+
+## Homework - Readings
+
+### Mastering Shiny
+
+**[Chapter 19: Shiny modules](https://mastering-shiny.org/scaling-modules.html)**
+
+**[Chapter 5: User feedback](https://mastering-shiny.org/action-feedback.html)**
+
+### Shiny articles
+
+**[Modularizing Shiny app code](https://shiny.rstudio.com/articles/modules.html)**
+
+**[Communication between modules](https://shiny.rstudio.com/articles/communicate-bet-modules.html)**
+
+**[Data](https://shiny.rstudio.com/articles/#data)**
+
+**[RStudio: Databases using R](https://solutions.rstudio.com/db/)**
+
+## Homework - Exercise
+
+Continue with your shiny application from session 4
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Use a Shiny module
+  - Convert some of your existing code to modules
+  - Try creating modules with inputs and outputs
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Validate your inputs
+  - Use `req()` and `validate()` to check for valid data
+  - Provide user feedback for invalid inputs with shinyFeedback
+:::
+::::
+
+:::::
+
+## Goodbye!
+
+&nbsp;
+
+### Next Session
+
+6. *Application structure and workflow*

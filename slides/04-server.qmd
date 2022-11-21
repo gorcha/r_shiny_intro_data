@@ -29,8 +29,8 @@ library(shiny)
 2. Shiny UI - layout, styling and theming
 3. Shiny UI - dynamic UI and extensions
 4. *Reactivity and the user session*
-5. Application structure and workflow
-6. Data ingress and egress
+5. Shiny modules, working with data
+6. Application structure and workflow
 
 ## Recap
 
@@ -980,4 +980,4 @@ Continue with your shiny application from session 3
 
 ### Next Session
 
-5. *Application structure and workflow*
+5. *Shiny modules, working with data*
