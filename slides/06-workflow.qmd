@@ -1,0 +1,901 @@
+---
+title: "Introduction to Shiny"
+subtitle: "Session 6: *Application structure and workflow*"
+author: "Danny Smith"
+format:
+  revealjs:
+    theme: dark
+    width: 1280
+    height: 720
+    auto-animate: true
+    slide-number: true
+    chalkboard: false
+    preview-links: auto
+    footer: "**Introduction to Shiny** Session 6: *Application structure and workflow*"
+    self-contained: true
+    reference-location: document
+---
+
+# Housekeeping
+
+```{r}
+#| output: false
+library(shiny)
+```
+
+## Course outline
+  
+1. Introduction to Shiny
+2. Shiny UI - layout, styling and theming
+3. Shiny UI - dynamic UI and extensions
+4. Reactivity and the user session
+5. Shiny modules, working with data
+6. *Application structure and workflow*
+
+## Recap
+
+&nbsp;
+
+### Last Session
+
+5. *Shiny modules, working with data*
+
+&nbsp;
+
+::: {.incremental}
+* Homework
+* Readings
+* Questions?
+:::
+
+## Resources
+
+::: {.fragment}
+#### Session materials
+
+[GitHub repo](https://github.com/gorcha/r_shiny_intro_data)
+
+[Example application](https://github.com/gorcha/r_shiny_intro_app)
+:::
+
+&nbsp;
+
+::: {.fragment}
+#### Online resources
+
+[Engineering Production-Grade Shiny Apps](https://engineering-shiny.org)
+
+[Appsilon: How to Make Production Ready Shiny Applications](https://appsilon.com/how-to-make-production-ready-shiny-applications/)
+:::
+
+## This session
+
+::: {.incremental}
+* Application structure
+* Application metadata
+* Testing
+* Deployment
+* Other approaches
+:::
+
+# Application structure
+
+## Structure
+
+::::: {.columns}
+
+:::: {.column width="35%"}
+```{.default code-line-numbers=false}
+app
+├── R
+│   ├── data_load.R
+│   ├── func_ui.R
+│   ├── mod_select_dataset.R
+│   ├── mod_select_datavar.R
+│   └── mod_select_variable.R
+│
+├── data
+│   └── weather_data.rds
+│
+├── tests
+│   ├── testthat
+│   │   └── ...
+│   └── testthat.R
+│
+├── www
+│   ├── custom.css
+│   ├── custom.js
+│   ├── favicon.ico
+│   └── img_logo.png
+│
+├── config.yml
+├── global.R
+├── server.R
+└── ui.R
+```
+::::
+
+:::: {.column width="65%"}
+::: {.incremental}
+* Basic application files
+* R sub-directory
+* config.yml - configuration settings
+* www - JavaScript, CSS and other assets
+* data - data files for loading
+* tests - unit tests
+:::
+::::
+
+:::::
+
+## Application files and R directory
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+Basic application files
+:::
+
+::: {.incremental}
+* The core of your application
+* server.R and ui.R
+* global.R - code accessible
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+R sub-directory
+:::
+
+::: {.incremental}
+* Scripts `source()`d in order before running the app
+* Define modules and helper functions
+:::
+::::
+
+:::::
+
+## Function scope
+
+[Scoping rules for Shiny apps](https://shiny.rstudio.com/articles/scoping.html)
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### server.R & ui.R
+:::
+
+::: {.incremental}
+* Executed separately to produce server and UI
+* Objects only accessible in their respective files
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### global.R & R sub-directory
+:::
+
+::: {.incremental}
+* Executed in the global environment
+* Objects accessible everywhere in the app
+:::
+::::
+
+:::::
+
+## Configuration
+
+📦 [config](https://rstudio.github.io/config/)
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Specify config in config.yml
+  - `config::get()` to access
+* Config for different environments
+  - `default` block sets defaults
+  - Override defaults for others
+* Set active environment
+  - `R_CONFIG_ACTIVE`
+  - `config::is_active()`
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+```{.yaml filename="config.yml"}
+default:
+  title: "My wonderful application"
+  debug: true
+
+rsconnect:
+  debug: false
+```
+:::
+
+&nbsp;
+
+::: {.fragment}
+```{.r filename="R script"}
+config::is_active("default")
+config::get("debug")
+
+Sys.setenv(R_CONFIG_ACTIVE = "rsconnect")
+config::is_active("rsconnect")
+config::get("debug")
+```
+:::
+::::
+
+:::::
+
+## Static assets
+
+The www directory stores static assets for use in your application UI
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Contains resources your app may link to
+  - CSS and JS scripts
+  - Images
+* File name in R is relative to www directory
+* Files stored here can be accessed by users
+:::
+::::
+
+:::: {.column width="60%"}
+
+&nbsp;
+
+::: {.fragment}
+```{.r filename="ui.R"}
+ui <- fixedPage(
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+    tags$script(src = "custom.js")
+  ),
+  img(src = "img_logo.png", width = "100px", height = "100px")
+)
+```
+:::
+::::
+
+:::::
+
+## Data files
+
+The data directory stores static data files
+
+::: {.incremental}
+* Nothing special
+* Datasets in standard file formats
+* Read dataset objects in global.R or a script in the R directory
+  - Accessible from the global environment
+  - Can be used in server.R, ui.R and other scripts
+:::
+
+# Application metadata
+
+## Structure
+
+Above the Shiny application itself we have application metadata
+
+::::: {.columns}
+
+:::: {.column width="35%"}
+```{.default code-line-numbers=false}
+app
+├── .github
+│   └── workflows
+│       └── ...
+│
+├── app
+│   └── ...
+│
+├── data-raw
+│   └── process_data.R
+│
+├── renv
+│   └── ...
+│
+├── rsconnect
+│   └── ...
+│
+├── LICENSE.md
+├── README.md
+├── app.R
+└── renv.lock
+```
+::::
+
+:::: {.column width="65%"}
+::: {.incremental}
+* app, app.R - our Shiny application
+* Documentation - README.md, LICENSE.md
+* data-raw - data loading scripts
+* .github/workflows - CI scripts
+* renv, renv.lock - dependency management
+* rsconnect - deployment configuration
+:::
+::::
+
+:::::
+
+## Application
+
+Our application lives in the app directory
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.incremental}
+* All application specific files
+* Separates metadata from the application
+* app.R is an *application loader*
+  - Shiny will see this as an application
+  - All it does is run the app directory
+:::
+::::
+
+:::: {.column width="50%"}
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+&nbsp;
+
+::: {.fragment}
+```{.r filename="app.R"}
+shiny::shinyAppDir("app")
+```
+:::
+::::
+
+:::::
+
+## Documentation
+
+::: {.fragment}
+Standard markdown documentation
+:::
+
+::: {.incremental}
+* README.md - General overview of the application
+* LICENSE.md - License for public GitHub repos
+:::
+
+::: {.fragment}
+Include additional documentation as necessary
+:::
+
+::: {.incremental}
+* Other markdown docs
+* docs sub-directory if needed
+* Document everything!
+:::
+
+## Dependency management
+
+📦 [renv](https://rstudio.github.io/renv/)
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.incremental}
+* *R*eproducible *env*ironment
+* Isolate packages needed for the application
+* Pin package versions
+  - Packages only update when you want them to
+  - Controlled updates
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.incremental}
+* `renv::init()` to set up
+* `renv::install()` to install all identified dependencies
+* Install and update packages as usual
+* `renv::snapshot()` to capture the current package versions
+:::
+::::
+
+:::::
+
+# Testing
+
+## Basic testing
+
+📦 [testthat](https://testthat.r-lib.org/)
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+Use testthat infrastructure to test Shiny applications
+:::
+
+::: {.incremental}
+* Standard testthat folder structure
+* Test functions in the usual way
+* Additional functions available for testing reactive components
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+Slightly different setup to package testing
+:::
+
+::: {.incremental}
+* `shiny::shinyAppTemplate()` to set up boilerplate
+* `shiny::runTests()` to run
+:::
+
+::: {.fragment}
+```{.r filename="app/tests/testthat.R"}
+shinytest2::test_app()
+```
+
+&nbsp;
+
+```{.r code-line-numbers=false}
+shiny::runTests("app")
+```
+:::
+::::
+
+:::::
+
+## Testing reactivity
+
+Test the server function with `shiny::testServer()` 
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.fragment fragment-index=1}
+* Takes an expression
+* Set input values using `session$setInputs()`
+* Use expectations to check output and reactive values
+:::
+
+::: {.fragment fragment-index=2}
+Works with modules as well!
+
+* Use module server
+* Specify arguments
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.fragment fragment-index=1}
+```{.r filename="test-server.R"}
+testServer(expr = {
+  # Set the `size` slider and check the output
+  session$setInputs(size = 6)
+  expect_equal(output$sequence, "1 2 3 4 5 6")
+
+  session$setInputs(size = 12)
+  expect_equal(output$sequence, "1 2 3 4 5 6 7 8 9 10 11 12")
+})
+```
+:::
+
+&nbsp;
+
+::: {.fragment fragment-index=2}
+```{.r filename="test-mod_select_datavar"}
+testServer(selectVariableServer, args = list(dataset = reactive(mtcars)), {
+  session$setInputs(variable = "mpg")
+  expect_equal(var(), "mpg")
+})
+```
+:::
+::::
+
+:::::
+
+## Snapshot testing
+
+📦 [shinytest2](https://rstudio.github.io/shinytest2/)
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+More complex applications can be difficult to test well
+:::
+
+::: {.incremental}
+* Easy to demonstrate behaviour, hard to specify in code
+* Many inputs and outputs changing
+* Appearance cannot be tested using standard unit tests
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+shinytest2 uses a headless browser to take *snapshots* of your app
+:::
+
+::: {.incremental}
+* Record and replay user actions, allowing complex interactions
+* Check exact application state
+* Screenshots to check UI changes
+:::
+::::
+
+:::::
+
+## Continous integration
+
+Like packages use continuous integration to automatically test your app
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Slightly different approach to testing packages
+  - `shiny::runTests()`
+:::
+  
+::: {.fragment}
+See the [shinytest2 CI vignette](https://rstudio.github.io/shinytest2/articles/use-ci.html) for some examples
+:::
+
+::: {.fragment}
+Warning - CI setup can be complicated!
+:::
+::::
+
+:::: {.column width="60%"}
+::: {.fragment}
+```{.yaml filename=".github/workflows/check-app.yaml"}
+# Workflow derived from https://github.com/rstudio/shinytest2/tree/main/actions/test-app/example-test-app-description.yaml
+# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+name: Test app w/ {renv}
+
+jobs:
+  test-app:
+    runs-on: ${{ matrix.config.os }}
+
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: ubuntu-latest, r: release}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-renv@v2
+
+      - uses: rstudio/shinytest2/actions/test-app@v1
+        with:
+          app-dir: "app"
+```
+:::
+::::
+
+:::::
+
+# Deployment
+
+## Deploying to rsconnect
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+Use the magical deploy button!
+
+![](img/session_06/deploy_button.png)
+:::
+
+::: {.incremental}
+* Add deployment account
+* Only deploy application files
+* Ensures package versions on the server are the same as local
+* Config is saved for next time in the rsconnect directory
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+![](img/session_06/deploy_files.png)
+:::
+::::
+
+:::::
+
+## Configuration and rsconnect
+
+📦 [config](https://rstudio.github.io/config/)
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+RStudio connect automatically activates the `rsconnect` config
+:::
+
+::: {.incremental}
+* Override development config options in `rsconnect` block
+* Treat it as your production environment
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+```{.yaml filename="config.yml"}
+default:
+  title: "My wonderful application"
+  debug: true
+
+rsconnect:
+  debug: false
+```
+:::
+::::
+
+:::::
+
+## Managing connection strings
+
+Unlike a standard R project, Shiny apps aren't only run locally
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.incremental}
+* Multiple environments
+  - Locally
+  - Deployed to testing
+  - Deployed to production
+* DB connection is often different
+  - Manage connection strings with the config package
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+```{.r}
+if (config::is_active("rsconnect")) {
+  pool <- dbPool(
+    odbc::odbc(),
+    dsn = config::get("db_dsn"),
+    database = config::get("db_dbase")
+  )
+} else {
+  pool <- dbPool(
+    odbc::odbc(),
+    driver = config::get("db_driver"),
+    server = config::get("db_server"),
+    serverspn = paste0("MSSQLsvc/", config::get("db_server")),
+    database = config::get("db_dbase"),
+    trusted_connection = "YES"
+  )
+}
+```
+:::
+::::
+
+:::::
+
+## Debugging deployed apps
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### `devmode()`
+:::
+
+::: {.incremental}
+* Helper functions to set development options and messaging for easier debugging
+* Enable with `devmode()`
+* Check out the help for details
+  - `?devmode`
+* Use the RStudio connect logs to view messages
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+#### shinyjs `runcode`
+:::
+
+::: {.incremental}
+* `runcodeUI()` and `runcodeServer()`
+* Include a text box that can be used to run arbitrary code
+:::
+
+::: {.fragment}
+```{.r}
+shinyApp(
+  ui = fluidPage(
+    useShinyjs(),
+    runcodeUI(code = "shinyjs::alert('Hello!')")
+  ),
+  server = function(input, output) {
+    runcodeServer()
+  }
+)
+```
+:::
+::::
+
+:::::
+
+## Load testing
+
+📦 [shinyloadtest](https://rstudio.github.io/shinyloadtest/)
+
+::::: {.columns}
+
+:::: {.column width="40%"}
+::: {.incremental}
+* Run load testing on deployed applications
+* Simulate behaviour when multiple users are interacting with an application at once
+* Great for finding performance bottlenecks
+:::
+::::
+
+:::: {.column width="60%"}
+
+&nbsp;
+
+::: {.fragment}
+![](img/session_06/slt_report_screenshot.png)
+:::
+::::
+
+:::::
+
+# Other approaches
+
+## A general note
+
+This session outlines all of the main components that are needed in a production ready application, but it is by no means the only approach
+
+::: {.incremental}
+* Many approaches are used across the Shiny ecosystem
+* No one approach is best
+* Key considerations
+  - Consistency - use the same approach across your applications
+  - Clarity - make sure your structure is clear and easy to follow
+  - Documentation - document your structure, so other developers can understand without having to dig through the details
+:::
+
+
+## Applications as packages
+
+::: {.incremental}
+* Take advantage of R package infrastructure
+  - Documentation
+  - Testing
+* Application structure and workflow is quite different
+  - Manage dependencies with DESCRIPTION
+  - Launch app with a function
+:::
+
+::: {.fragment}
+This is a bit more complicated, and out of the scope of this training - check out [Mastering Shiny Chapter 20: Packages](https://mastering-shiny.org/scaling-packaging.html) for a detailed overview
+:::
+
+## Golem
+
+📦 [golem](https://thinkr-open.github.io/golem/)
+
+::: {.incremental}
+* An "opinionated framework for building production-grade shiny applications"
+* Uses R package structure for applications
+* Very specific way of structuring files
+* Additional helper functions for the development cycle
+:::
+
+::: {.fragment}
+Check out [Engineering Shiny](https://engineering-shiny.org/) for a detailed overview of building Shiny applications with golem
+:::
+
+## Auditing applications
+
+📦 [shinyValidator](https://opensource.nibr.com/shinyValidator/)
+
+::: {.incremental}
+* Suite of tools for auditing apps built with the golem framework
+* Many features
+  - Testing and test coverage
+  - Profiling and performance testing
+  - Code analysis
+:::
+  
+::: {.fragment}
+Even if you're not using golem, shinyValidator provides a very helpful overview of what you need to check when building Shiny apps. Have a look at the [Get started vignette](https://opensource.nibr.com/shinyValidator/articles/shinyValidator.html) for details of what it does and how
+:::
+
+# Wrapping up
+
+## Homework - Readings
+
+### Mastering Shiny
+
+**[Chapter 17: General guidelines](https://mastering-shiny.org/best-practices.html)**
+
+**[Chapter 20: Packages](https://mastering-shiny.org/scaling-packaging.html)**
+
+**[Chapter 21: Testing](https://mastering-shiny.org/scaling-testing.html)**
+
+### Shiny articles
+
+**[Testing](https://shiny.rstudio.com/articles/#testing)**
+
+## Homework - Exercise
+
+Continue with your shiny application from session 5
+
+::::: {.columns}
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Convert your application to a formal structure!
+  - Create scripts under R as appropriate
+:::
+  
+::: {.fragment}
+* Add metadata
+  - Documentation
+  - Use renv
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.fragment}
+* Add tests
+  - Test your modules
+  - Test key components of your server function
+  - Add snapshot tests
+:::
+
+::: {.fragment}
+* Deploy!
+  - Deploy to RStudio connect or shinyapps.io
+:::
+::::
+
+:::::
+
+## Goodbye!
+
+&nbsp;
+
+Thanks for listening
