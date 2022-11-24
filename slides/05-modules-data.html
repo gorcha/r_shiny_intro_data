@@ -1434,7 +1434,7 @@ margin-right: 0; }
 <span id="cb7-3"><a href="#cb7-3"></a><span class="fu">source</span>(<span class="st">&quot;module_counter.R&quot;</span>, <span class="at">local =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb7-4"><a href="#cb7-4"></a></span>
 <span id="cb7-5"><a href="#cb7-5"></a>ui <span class="ot">&lt;-</span> <span class="fu">fixedPage</span>(</span>
-<span id="cb7-6"><a href="#cb7-6"></a>  <span class="fu">headerPanel</span>(<span class="st">&quot;Counters&quot;</span>),</span>
+<span id="cb7-6"><a href="#cb7-6"></a>  <span class="fu">titlePanel</span>(<span class="st">&quot;Counters&quot;</span>),</span>
 <span id="cb7-7"><a href="#cb7-7"></a>  <span class="fu">fixedRow</span>(</span>
 <span id="cb7-8"><a href="#cb7-8"></a>    <span class="fu">column</span>(<span class="dv">6</span>, <span class="fu">counterUI</span>(<span class="st">&quot;counter&quot;</span>)),</span>
 <span id="cb7-9"><a href="#cb7-9"></a>    <span class="fu">column</span>(<span class="dv">6</span>, <span class="fu">counterUI</span>(<span class="st">&quot;counter2&quot;</span>, <span class="st">&quot;My 2nd counter&quot;</span>))</span>
@@ -2028,7 +2028,7 @@ Data that changes over time outside of the Shiny app
 <p>User inputs can’t be trusted - 🌐 <a href="https://xkcd.com/327/">XKCD: Exploits of a Mom</a></p>
 <p> </p>
 <div class="fragment">
-<p>Two methods to avoid mailicious user inputs with DBI</p>
+<p>Two methods to avoid malicious user inputs with DBI</p>
 </div>
 <div class="columns">
 <div class="column" style="width:50%;">

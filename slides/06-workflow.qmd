@@ -140,7 +140,7 @@ Basic application files
 ::: {.incremental}
 * The core of your application
 * server.R and ui.R
-* global.R - code accessible
+* global.R
 :::
 ::::
 

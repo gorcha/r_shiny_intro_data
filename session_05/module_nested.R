@@ -138,7 +138,7 @@ selectDataVarServer <- function(id) {
 # Application ------------------------------------------------------------------
 
 ui <- fluidPage(
-  headerPanel("Data selectors"),
+  titlePanel("Data selectors"),
   fluidRow(
     column(6, selectDataVarUI("data")),
     column(6, selectDataVarUI("data2"))

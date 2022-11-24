@@ -238,7 +238,7 @@ library(shiny)
 source("module_counter.R", local = TRUE)
 
 ui <- fixedPage(
-  headerPanel("Counters"),
+  titlePanel("Counters"),
   fixedRow(
     column(6, counterUI("counter")),
     column(6, counterUI("counter2", "My 2nd counter"))
@@ -809,7 +809,7 @@ User inputs can't be trusted - 🌐 [XKCD: Exploits of a Mom](https://xkcd.com/3
 &nbsp;
 
 ::: {.fragment}
-Two methods to avoid mailicious user inputs with DBI
+Two methods to avoid malicious user inputs with DBI
 :::
 
 ::::: {.columns}

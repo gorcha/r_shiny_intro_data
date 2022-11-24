@@ -619,7 +619,7 @@ server <- function(input, output, session) {
 ::::: {.columns}
 
 :::: {.column width="40%"}
-📦 [shinys](https://deanattali.com/shinyjs/)
+📦 [shinyjs](https://deanattali.com/shinyjs/)
 
 ::: {.incremental}
 * Run JavaScript in the browser

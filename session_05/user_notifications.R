@@ -3,7 +3,7 @@ library(shiny)
 ui <- fixedPage(
   theme = bslib::bs_theme(version = 5),
   
-  headerPanel("Notifications"),
+  titlePanel("Notifications"),
   
   textInput("message", "Notification message", value = "My message"),
   numericInput("duration", "Duration", value = 5),
